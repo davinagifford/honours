@@ -1,0 +1,59 @@
+samples.csv      AusCPR samples
+--------------------------------------------------------
+Column           Description
+---------------  ---------------------------------------
+pseg_id          Sample identifier
+silk_id          Silk identifier
+segment_no       Segment number
+latitude         Latitude (WGS84)
+longitude        Longitude (WGS84)
+sample_time      Sample time (UTC)
+process_date     Date of lab processing
+trip_id          Trip identifier
+trip_code        Trip code
+route_id         Route identifier
+start_port       Start port
+end_port         End port
+route            Route (start and end port)
+project_id       Project identifier
+project_name     Project name
+vessel_id        Vessel identifier
+vessel_name      Vessel name
+sst              SST (from the RAMSSA dataset)
+--------------------------------------------------------
+
+species.csv      Species (all are copepods)
+--------------------------------------------------------
+Column           Description
+---------------  ---------------------------------------
+species_id       Species identifier
+species_name     Species name
+--------------------------------------------------------
+
+catches.csv      Catches
+--------------------------------------------------------
+Column           Description
+---------------  ---------------------------------------
+pseg_id          Sample identifier
+species_id       Species identifier
+abundance        Abundance (/m^3)
+--------------------------------------------------------
+
+sst_sites.csv    Query sites for the SST analysis
+--------------------------------------------------------
+Column           Description
+---------------  ---------------------------------------
+site_id          Site identifier
+latitude         Latitude
+longitude        Longitude
+--------------------------------------------------------
+
+site_sst.csv     SST data for the SST analysis
+--------------------------------------------------------
+Column           Description
+---------------  ---------------------------------------
+rec_id           Record identifier
+site_id          Site identifier
+sst_date         Date (UTC)
+sst              SST (from the RAMSSA dataset)
+--------------------------------------------------------

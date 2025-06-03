@@ -1,0 +1,32 @@
+#!/bin/bash
+# do_all
+#
+# Runs allscripts.
+#
+# Created: 2025-02-28
+# Author: Wayne A. Rochester
+
+run_r () {
+    if [[ "$1" == "-l" ]]
+    then
+        shift
+        echo "Running R script $1 ..."
+        R --slave --file="R/$1" 2>&1 | tee "output/${1%.R}_log.txt"
+    else
+        echo "Running R script $1 ..."
+        R --slave --file="R/$1"
+    fi
+}
+
+run_r read_segments.R
+run_r read_catch_data.R
+run_r -l calc_eac_cci.R
+
+run_r plot_segments.R
+run_r plot_eac_cci.R
+
+run_r read_sst_data.R
+run_r -l calc_eac_sst.R
+
+run_r plot_sst_sites.R
+run_r plot_eac_sst.R

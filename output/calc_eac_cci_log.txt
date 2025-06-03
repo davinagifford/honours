@@ -1,0 +1,56 @@
+
+Attaching package: ‘lubridate’
+
+The following objects are masked from ‘package:base’:
+
+    date, intersect, setdiff, union
+
+
+Attaching package: ‘dplyr’
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+Loading required package: nlme
+
+Attaching package: ‘nlme’
+
+The following object is masked from ‘package:dplyr’:
+
+    collapse
+
+This is mgcv 1.9-1. For overview type 'help("mgcv-package")'.
+Loading required package: permute
+Loading required package: lattice
+This is vegan 2.6-6.1
+                            RDA1        PC1        PC2        PC3
+Eigenvalue            0.01981112 0.04838967 0.03681962 0.02840071
+Proportion Explained  0.02978995 0.07276345 0.05536560 0.04270609
+Cumulative Proportion 0.02978995 0.10255340 0.15791900 0.20062509
+
+Family: gaussian 
+Link function: identity 
+
+Formula:
+rda_score ~ s(doy, bs = "cc", k = 5) + s(latitude) + s(time_x, 
+    k = 8)
+
+Parametric coefficients:
+             Estimate Std. Error t value Pr(>|t|)
+(Intercept) 1.314e-17  4.499e-03       0        1
+
+Approximate significance of smooth terms:
+              edf Ref.df     F p-value    
+s(doy)      2.724  3.000 82.18  <2e-16 ***
+s(latitude) 8.041  8.755 93.60  <2e-16 ***
+s(time_x)   5.741  6.508 23.03  <2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+R-sq.(adj) =  0.496   Deviance explained = 50.3%
+GCV = 0.026475  Scale est. = 0.026116  n = 1290
