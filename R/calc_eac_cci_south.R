@@ -1,6 +1,6 @@
-### calc_eac_cci_north.R
+### calc_eac_cci_south.R
 ###
-### Calculates the EAC copepod composition index.
+### Calculates the EAC copepod composition index for the EAC below the separation zone at 32 degrees south
 ###
 ### Created: 2023-07-25
 ### Author: Wayne A. Rochester
@@ -27,8 +27,8 @@ species <- catch_data$species
 catches <- catch_data$catches
 
 # filter to north of separation
-samples_north <- samples %>% 
-  filter(latitude <= "-32")
+samples_south <- samples %>% 
+  filter(latitude >= "-32")
 
 # create the grouping index for organising the data
 # tapply_index <-
@@ -47,7 +47,7 @@ samples_north <- samples %>%
 
 catch_mtx <- catches %>%
   mutate(
-    pseg_id = factor(pseg_id, levels = samples_north$pseg_id), # create factors of the sample ID
+    pseg_id = factor(pseg_id, levels = samples_south$pseg_id), # create factors of the sample ID
     species_id = factor(species_id, levels = species$species_id)
   ) %>% # create factors of the species ID
   group_by(pseg_id, species_id) %>% # grouping by sample, then by species
@@ -81,70 +81,70 @@ rownames(catch_mtx_trfm) <- rownames(catch_mtx_numeric) <- catch_mtx$pseg_id
 catch_mtx_trfm <- catch_mtx_trfm[!is.na(rownames(catch_mtx_trfm)), ]
 
 
-# Subset samples_north to match the matrix rows
-samples_north_aligned <- samples_north %>%
+# Subset samples_south to match the matrix rows
+samples_south_aligned <- samples_south %>%
   filter(pseg_id %in% rownames(catch_mtx_trfm)) %>%
   arrange(factor(pseg_id, levels = rownames(catch_mtx_trfm)))
 
 
 
 # RDA using the transformed catch data and the SST values from the sample df
-rda_fit_north <- rda(catch_mtx_trfm ~ sst, data=samples_north_aligned)
+rda_fit_south <- rda(catch_mtx_trfm ~ sst, data=samples_south_aligned)
 
-print(summary(rda_fit_north)$cont$importance[, 1:4])
+print(summary(rda_fit_south)$cont$importance[, 1:4])
 
 # check significance of RDA model
-anova_rda <- anova.cca(rda_fit_north, permutations = 999)
+anova_rda <- anova.cca(rda_fit_south, permutations = 999)
 print(anova_rda)
 
-samp_score_n <- scores(rda_fit_north, display="wa")[, 1]
-sp_score_n <- scores(rda_fit_north, display="sp")[, 1]
+samp_score_s <- scores(rda_fit_south, display="wa")[, 1]
+sp_score_s <- scores(rda_fit_south, display="sp")[, 1]
 
-if (cor(samples_north$sst, samp_score_n, use="complete.obs") < 0) {
-    samp_score_n <- -samp_score_n
-    sp_score_n <- -sp_score_n
+if (cor(samples_south$sst, samp_score_s, use="complete.obs") < 0) {
+    samp_score_s <- -samp_score_s
+    sp_score_s <- -sp_score_s
 }
 
-samples_north <- samples_north %>% mutate(rda_score = samp_score_n)
+samples_south <- samples_south %>% mutate(rda_score = samp_score_s)
 
-head(samples_north)
+head(samples_south)
 
 
-species_n <- species %>% mutate(rda_score = sp_score_n)
+species_s <- species %>% mutate(rda_score = sp_score_s)
 
 
 # get summary stats
-sample_stats_n <-
-    samples_north %>%
+sample_stats_s <-
+    samples_south %>%
     summarise(time0 = floor_date(min(sample_time), unit = "day"),
               mean_time = mean(sample_time),
               mean_lat = mean(latitude))
 
-time0 <- pull(sample_stats_n, time0)
-mean_lat <- pull(sample_stats_n, mean_lat)
-mean_time <- pull(sample_stats_n, mean_time)
+time0 <- pull(sample_stats_s, time0)
+mean_lat <- pull(sample_stats_s, mean_lat)
+mean_time <- pull(sample_stats_s, mean_time)
 
-# add in temporal data to the samples_north df
-samples_north <-
-    samples_north %>%
+# add in temporal data to the samples_south df
+samples_south <-
+    samples_south %>%
     mutate(doy = yday(sample_time),
            time_x = time_length(interval(time0, sample_time), unit = "day"))
 
 # GAM
 # cyclic cubic splines - these make the start and end f year connect smoothly
 # k is the number of 'knots' to make the spline. Small ,5 = simple, less wiggly curve
-lm_fit_north <- gam(rda_score ~ s(doy, bs = "cc", k = 5) + # day of year, , K?
+lm_fit_south <- gam(rda_score ~ s(doy, bs = "cc", k = 5) + # day of year, , K?
                 s(latitude) + # latitude smoother
                 s(time_x, k = 8), # time
               knots = list(doy = c(0, 365)), # boundary for the day cycle
-              data = samples_north)
+              data = samples_south)
 
-print(summary(lm_fit_north))
+print(summary(lm_fit_south))
 
-terms_pred <- predict(lm_fit_north, type = "terms", newdata = samples_north)
+terms_pred <- predict(lm_fit_south, type = "terms", newdata = samples_south)
 
-samples_north <-
-    samples_north %>%
+samples_south <-
+    samples_south %>%
     mutate(lat_eff = terms_pred[, "s(latitude)"],
            eac_cci = rda_score - lat_eff) %>%
     select(!lat_eff)
@@ -159,12 +159,12 @@ climatology <-
            doy = yday(sample_time),
            time_x = time_length(interval(time0, mean_time), unit = "day"))
 
-clim_terms_pred <- predict(lm_fit_north, type = "terms", newdata = climatology)
+clim_terms_pred <- predict(lm_fit_south, type = "terms", newdata = climatology)
 
 climatology <-
     climatology %>%
     mutate(doy_eff = clim_terms_pred[, "s(doy)"],
-           intercept = coef(lm_fit_north)["(Intercept)"],
+           intercept = coef(lm_fit_south)["(Intercept)"],
            eac_cci = doy_eff + intercept) %>%
     select(!c(doy_eff, intercept))
 
@@ -173,8 +173,8 @@ climatology <-
 ## than sample times to ensure that all samples from one trip are
 ## assigned to the same month. (Trips are only a few days long.)
 
-north_data <-
-    samples_north %>%
+south_data <-
+    samples_south %>%
     group_by(trip_id) %>%
     mutate(trip_time = mean(sample_time)) %>%
     ungroup() %>%
@@ -184,13 +184,13 @@ north_data <-
               num_samples = n(),
               .groups = "drop")
 
-cci_data_north <- list(samples = samples_north,
-                 species = species_n,
+cci_data_south <- list(samples = samples_south,
+                 species = species_s,
                  catches = catches,
                  catch_mtx = catch_mtx,
                  catch_mtx_trfm = catch_mtx_trfm,
-                 rda_fit = rda_fit_north,
-                 lm_fit = lm_fit_north,
+                 rda_fit = rda_fit_south,
+                 lm_fit = lm_fit_south,
                  climatology = climatology,
-                 month_data = north_data)
-saveRDS(cci_data_north, file.path("var", "eac_cci_north.rds"))
+                 month_data = south_data)
+saveRDS(cci_data_south, file.path("var", "eac_cci_south.rds"))
