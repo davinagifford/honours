@@ -26,16 +26,29 @@ samples <- catch_data$samples
 species <- catch_data$species
 catches <- catch_data$catches
 
-tapply_index <-
-    catches %>%
-    mutate(pseg_id = factor(pseg_id, levels = samples$pseg_id),
-           species_id = factor(species_id, levels = species$species_id)) %>%
-    select(pseg_id, species_id)
+catch_mtx <- catches %>%
+  mutate(
+    pseg_id = factor(pseg_id, levels = samples$pseg_id), # create factors of the sample ID
+    species_id = factor(species_id, levels = species$species_id)
+  ) %>% # create factors of the species ID
+  group_by(pseg_id, species_id) %>% # grouping by sample, then by species
+  summarise(max_abundance = max(abundance, na.rm = TRUE), .groups = "drop") %>% # creating a column for max abundance
+  pivot_wider( # create the matrix
+    names_from = species_id,
+    values_from = max_abundance,
+    values_fill = 0
+  )
 
-catch_mtx <- tapply(catches$abundance, tapply_index, max, default = 0)
 
-catch_mtx_trfm <- sqrt(sqrt(catch_mtx)) # double sqare root transformation
-catch_mtx_trfm <- decostand(catch_mtx_trfm, "hellinger") # hellinger transformation
+# Convert to matrix, excluding the grouping column
+catch_mtx_numeric <- as.matrix(catch_mtx[,-1])
+# make row names the sample id 
+rownames(catch_mtx_numeric) <- catch_mtx$pseg_id
+
+
+# double square root transformation followed by Hellinger transformation
+catch_mtx_trfm <- sqrt(sqrt(catch_mtx_numeric))
+catch_mtx_trfm <- decostand(catch_mtx_trfm, "hellinger")
 
 
 
@@ -95,7 +108,7 @@ samples <-
 
 
 
-lm_fit <- gam(rda_score ~ s(doy, bs = "cc", k = 25) + s(latitude) +
+lm_fit <- gam(rda_score ~ s(doy, bs = "cc", k = 5) + s(latitude) +
                   s(time_x, k = 25),
               knots = list(doy = c(0, 365)), # sets the bounds on doy - limit to 365 days
               data = samples)
