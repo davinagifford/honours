@@ -66,27 +66,33 @@ clim_points <-
 
 p <-
     ggplot(mapping = aes(sample_time, eac_cci)) +
-    geom_segment(data = month_data_t,
-                 mapping = aes(xend = sample_time, yend = eac_cci_clim,
-                               colour = anom_label, linetype = anom_label)) +
+    
     geom_line(data = clim_points,
               mapping = aes(linetype = "Climatology",
-                            colour = "Climatology")) +
-    geom_point(data = month_data_t, size = 2, shape = 21, fill = "gray") +
+                            colour = "Climatology"),
+              linewidth = 1) +
+    geom_segment(data = month_data_t,
+               mapping = aes(xend = sample_time, yend = eac_cci_clim,
+                             colour = anom_label, linetype = anom_label),
+               linewidth = 1.5) +
+    geom_point(data = month_data_t, size = 3, shape = 21, fill = "black") +
     scale_colour_manual(breaks = c("Anomaly (+)", "Anomaly (-)",
                                    "Climatology"),
                         values = c("red", "blue", "black")) +
     scale_linetype_manual(breaks = c("Anomaly (+)", "Anomaly (-)",
                                      "Climatology"),
-                          values = c("solid", "dashed", "dotted")) +
+                          values = c("solid", "solid", "solid")) +
     scale_x_datetime(date_breaks = "1 year", minor_breaks = NULL,
                      date_labels = "%Y") +
+    theme(axis.title = element_text(size = 14), 
+          plot.title = element_text(size = 18, face = "bold")) +
     labs(x = "Time",
          y = "EAC copepod composition index",
          colour = NULL,
          linetype = NULL,
-         title = "EAC copepod composition index (monthly average)")
-ggsave(file.path("output", "eac_cci_new.png"),
+         title = "EAC copepod composition index (monthly average)",
+         )
+ggsave(file.path("output", "eac_cci.png"),
        plot = p, width = 1200 / 96, height = 600 / 96, dpi = 96,
        device = png)
 
@@ -180,7 +186,7 @@ site_data$sst <- samples_t$sst
 # 3. Extract and scale vectors
 
 # Extract and scale vectors properly
-vecs <- scores(fit_env, display = "vectors", scaling = "sites")  # This returns a matrix
+vecs <- scores(fit_env, display = "vectors", scaling = "sites") # This returns a matrix
 
 # Convert to data frame and scale by vector length (magnitude)
 vecs_df <- as.data.frame(vecs)

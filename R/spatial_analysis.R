@@ -62,14 +62,15 @@ df <- data.frame(
 
 # Plot
 ggplot(df, aes(x = South, y = North)) +
-  geom_point(color = "blue", size = 3) +
+  geom_point(color = "black", size = 3) +
   geom_smooth(method = "lm", se = FALSE, color = "red", linetype = "dashed") +
+  theme(axis.title = element_text(size = 14), 
+        plot.title = element_text(size = 18, face = "bold")) +
   labs(
     title = "Correlation of Monthly Average EAC CCI (South vs North)",
     x = "Southern Region EAC CCI",
     y = "Northern Region EAC CCI",
     subtitle = paste("Pearson correlation:", round(correlation, 3),
                      ", p-value = ", signif(p_val, 3))
-  ) +
-  theme_minimal()
+  ) 
 ggsave("output/eac_cci_correlation_north_south.png", width = 8, height = 6, dpi = 300)

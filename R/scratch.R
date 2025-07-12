@@ -8,6 +8,7 @@ library(ozmaps)
 library(terra)
 library(sf)
 library(skimr)
+library(ncdf4)
 
 
 
@@ -45,6 +46,25 @@ ggplot() +
   coord_sf(xlim = c(135, 160), ylim = c(-10, -45)) + # let's zoom in 
   theme_minimal()
 
+# map for presentation
+
+ggplot() +
+  geom_sf(data = sf_map, alpha = 0.3) +
+  geom_sf(data = samp_loc_sf, size = 1, fill = "grey", color = "darkgreen", alpha = 0.5) +
+  coord_sf(xlim = c(141, 155), ylim = c(-26, -39)) + # let's zoom in 
+  theme_minimal()
+
 
 # summarise data
 skim(samples)
+
+
+# read mooring data
+
+ncpath <- "D:/HONOURS/DavinaG_2025_Honours/data/"
+ncname <- "EAC_filled-daily-distance-depth-gridded-product_20120401-20220727"  
+ncfname <- paste(ncpath, ncname, ".nc", sep="")
+dname <- "tmp"  # note: tmp means temperature (not temporary)
+
+ncin <- nc_open(ncfname)
+print(ncin)
