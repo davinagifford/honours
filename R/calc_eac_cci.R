@@ -68,6 +68,7 @@ print(summary(rda_fit)$cont$importance[, 1:4])
 anova.cca(rda_fit, step = 1000)
 RsquareAdj(rda_fit)
 
+
 # Extract scores
 
 samp_score <- scores(rda_fit, display="wa")[, 1] # Sample (site) scores on RDA1. wa = weighted average
