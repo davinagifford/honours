@@ -66,27 +66,20 @@ clim_points <-
 
 p <-
     ggplot(mapping = aes(sample_time, eac_cci)) +
-<<<<<<< HEAD
-    
-=======
     geom_segment(data = month_data_t,
                  mapping = aes(xend = sample_time, yend = eac_cci_clim,
                                colour = anom_label, linetype = anom_label),
                  linewidth = 1.5) +
->>>>>>> 123d249acf994a71e437b429d91889919dbfa40e
     geom_line(data = clim_points,
               mapping = aes(linetype = "Climatology",
                             colour = "Climatology"),
               linewidth = 1) +
-<<<<<<< HEAD
     geom_segment(data = month_data_t,
                mapping = aes(xend = sample_time, yend = eac_cci_clim,
                              colour = anom_label, linetype = anom_label),
                linewidth = 1.5) +
     geom_point(data = month_data_t, size = 3, shape = 21, fill = "black") +
-=======
     geom_point(data = month_data_t, size = 2.5, shape = 21, fill = "black") +
->>>>>>> 123d249acf994a71e437b429d91889919dbfa40e
     scale_colour_manual(breaks = c("Anomaly (+)", "Anomaly (-)",
                                    "Climatology"),
                         values = c("red", "blue", "black")) +

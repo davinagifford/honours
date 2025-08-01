@@ -36,7 +36,9 @@ catch_mtx <- catches %>%
   pivot_wider( # create the matrix
     names_from = species_id,
     values_from = max_abundance,
-    values_fill = 0
+    values_fill = 0,
+    id_expand = TRUE, # ensures that all combinations of pseg_id and species_id are included
+    names_expand = TRUE, 
   )
 
 
@@ -45,6 +47,8 @@ catch_mtx_numeric <- as.matrix(catch_mtx[,-1])
 # make row names the sample id 
 rownames(catch_mtx_numeric) <- catch_mtx$pseg_id
 
+stopifnot(rownames(catch_mtx_numeric) == as.character(samples$pseg_id))
+stopifnot(colnames(catch_mtx_numeric) == as.character(species$species_id))
 
 # double square root transformation followed by Hellinger transformation
 catch_mtx_trfm <- sqrt(sqrt(catch_mtx_numeric))
@@ -85,7 +89,16 @@ if (cor(samples$sst, samp_score, use="complete.obs") < 0) { # checks correlation
 # add scores to the dataframes, for use in analysis
 
 samples <- samples %>% mutate(rda_score = samp_score)
-species <- species %>% mutate(rda_score = sp_score)
+#species <- species %>% mutate(rda_score = sp_score)
+
+# ensure that species scores have same order as the species table
+sp_score_df <-
+  sp_score %>%
+  enframe(name = "species_id", value = "rda_score") %>%
+  mutate(species_id = as.integer(species_id))
+
+species <- species %>% left_join(sp_score_df, by = "species_id")
+
 
 # summarise stats of samples 
 sample_stats <-
