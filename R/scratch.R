@@ -68,3 +68,34 @@ dname <- "tmp"  # note: tmp means temperature (not temporary)
 
 ncin <- nc_open(ncfname)
 print(ncin)
+
+
+
+# EAC CCI Anomaly over time -----------------------------------------------
+
+
+
+# get anomaly data
+
+anomaly <- tibble(
+  trip_month = month_data_t$trip_month,
+  eac_cci_clim = month_data_t$eac_cci_clim)
+
+
+month_data_t$trip_month <- as.Date(month_data_t$trip_month)
+
+
+# Create the plot with a trend line
+ggplot(month_data_t, aes(x = trip_month, y = eac_cci_clim)) +
+  geom_line(color = "steelblue", linewidth = 1) +
+  geom_point(color = "darkred", size = 2) +
+  geom_smooth(method = "loess", se = TRUE, color = "black", linetype = "dashed") +
+  labs(
+    title = "EAC CCI Clim Over Time with Trend Line",
+    x = "Trip Month",
+    y = "EAC CCI Clim"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+
