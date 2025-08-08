@@ -12,6 +12,7 @@
 library(tidyverse)
 library(ggplot2)
 library(readxl)
+library(scales)
 library(dplyr)
 
 # EAC CCI Anomaly over time -----------------------------------------------
@@ -145,15 +146,26 @@ ggplot(df, aes(x = trip_month, y = anomaly_strength)) +
 df <- df %>%
   mutate(direction = ifelse(eac_cci_clim > 0, "Positive", "Negative"))
 
+
+# Extract year data
+df <- df %>% 
+  separate(trip_month, c("year", "month", "day"), sep = "-", remove = FALSE)
+
 # Plot with separate LOESS lines by direction
 ggplot(df, aes(x = trip_month, y = anomaly_strength, color = direction)) +
   geom_point(alpha = 0.6) +
   geom_smooth(method = "loess", span = 0.3, se = FALSE, linewidth = 1, linetype = "dashed") +
+  scale_x_date(
+    date_breaks = "1 year",       # Show every year
+    date_labels = "%Y"            # Format as 4-digit year
+  ) +
   labs(
     title = "LOESS Smoothing of Anomaly Strength by Direction",
-    x = "Month",
+    x = "Year",
     y = "Anomaly Strength (|Value|)"
   ) +
   scale_color_manual(values = c("Positive" = "blue", "Negative" = "red")) +
   theme_minimal()
+
+
 
