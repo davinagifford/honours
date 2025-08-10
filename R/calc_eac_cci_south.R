@@ -55,7 +55,9 @@ catch_mtx <- catches %>%
   pivot_wider( # create the matrix
     names_from = species_id,
     values_from = max_abundance,
-    values_fill = 0
+    values_fill = 0,
+    id_expand = TRUE, # ensures that all combinations of pseg_id and species_id are included
+    names_expand = TRUE, 
   )
 
 

@@ -21,7 +21,7 @@ library(dplyr)
 
 # get anomaly data
 
-anomaly <- tibble(
+anomaly_north <- tibble(
   trip_month = month_data_t$trip_month,
   eac_cci_clim = month_data_t$eac_cci_clim)
 
@@ -35,7 +35,7 @@ ggplot(month_data_t, aes(x = trip_month, y = eac_cci_clim)) +
   geom_point(color = "darkred", size = 2) +
   geom_smooth(method = "loess", se = TRUE, color = "black", linetype = "dashed") +
   labs(
-    title = "EAC CCI Clim Over Time with Trend Line",
+    title = "EAC CCI Clim Over Time with Trend Line - North",
     x = "Trip Month",
     y = "EAC CCI Clim"
   ) +
@@ -64,7 +64,7 @@ plot(decomposed_stl)
 
 
 # Load your data
-data <- read_excel("data/Anomaly.xlsx")
+data <- read_excel("data/Anomaly_north.xlsx")
 
 # Convert date column
 data$trip_month <- as.Date(data$trip_month)
@@ -95,7 +95,7 @@ ggplot(df, aes(x = trip_month, y = eac_cci_clim)) +
   geom_point(aes(color = is_strong), size = 2) +
   scale_color_manual(values = c("FALSE" = "black", "TRUE" = "red")) +
   geom_hline(yintercept = 0, linetype = "dashed") +
-  labs(title = "EAC Climate Anomalies with Strong Events Highlighted",
+  labs(title = "EAC Climate Anomalies with Strong Events Highlighted - North",
        y = "Anomaly", x = "Month", color = "Strong Anomaly") +
   theme_minimal()
 
@@ -111,7 +111,7 @@ table(strong_anomalies$direction)
 # Optional: Visualise
 ggplot(strong_anomalies, aes(x = direction)) +
   geom_bar(fill = "steelblue") +
-  labs(title = "Direction of Strong Anomalies",
+  labs(title = "Direction of Strong Anomalies - North",
        x = "Direction", y = "Count") +
   theme_minimal()
 
@@ -136,7 +136,7 @@ ggplot(df, aes(x = trip_month, y = anomaly_strength)) +
   geom_point(color = "black", alpha = 0.6) +
   geom_smooth(method = "loess", span = 0.2, se = FALSE, color = "green", linewidth = 1.2) +
   labs(
-    title = "LOESS Smoothing of Anomaly Strength Over Time",
+    title = "LOESS Smoothing of Anomaly Strength Over Time - North",
     x = "Month",
     y = "Anomaly Strength (|Value|)"
   ) +
@@ -160,7 +160,7 @@ ggplot(df, aes(x = trip_month, y = anomaly_strength, color = direction)) +
     date_labels = "%Y"            # Format as 4-digit year
   ) +
   labs(
-    title = "LOESS Smoothing of Anomaly Strength by Direction",
+    title = "LOESS Smoothing of Anomaly Strength by Direction - North",
     x = "Year",
     y = "Anomaly Strength (|Value|)"
   ) +

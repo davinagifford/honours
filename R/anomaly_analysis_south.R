@@ -21,7 +21,7 @@ library(dplyr)
 
 # get anomaly data
 
-anomaly <- tibble(
+anomaly_south <- tibble(
   trip_month = month_data_t$trip_month,
   eac_cci_clim = month_data_t$eac_cci_clim)
 
@@ -64,7 +64,7 @@ plot(decomposed_stl)
 
 
 # Load your data
-data <- read_excel("data/Anomaly.xlsx")
+data <- read_excel("data/Anomaly_south.xlsx")
 
 # Convert date column
 data$trip_month <- as.Date(data$trip_month)
@@ -111,7 +111,7 @@ table(strong_anomalies$direction)
 # Optional: Visualise
 ggplot(strong_anomalies, aes(x = direction)) +
   geom_bar(fill = "steelblue") +
-  labs(title = "Direction of Strong Anomalies",
+  labs(title = "Direction of Strong Anomalies_South",
        x = "Direction", y = "Count") +
   theme_minimal()
 
@@ -160,7 +160,7 @@ ggplot(df, aes(x = trip_month, y = anomaly_strength, color = direction)) +
     date_labels = "%Y"            # Format as 4-digit year
   ) +
   labs(
-    title = "LOESS Smoothing of Anomaly Strength by Direction",
+    title = "LOESS Smoothing of Anomaly Strength by Direction - south",
     x = "Year",
     y = "Anomaly Strength (|Value|)"
   ) +
