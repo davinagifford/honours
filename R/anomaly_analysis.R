@@ -31,7 +31,7 @@ anomaly$trip_month <- as.Date(anomaly$trip_month)
 
 
 # Create the plot with a trend line
-ggplot(anomaly, aes(x = trip_month, y = observed_eac_cci)) +
+ggplot(anomaly, aes(x = trip_month, y = anomaly)) +
   geom_line(color = "steelblue", linewidth = 1) +
   geom_point(color = "darkred", size = 2) +
   geom_smooth(method = "loess", se = TRUE, color = "black", linetype = "dashed") +
@@ -77,7 +77,8 @@ ggplot(df, aes(x = trip_month, y = anomaly_z)) +
     title = paste("EAC Climate Anomalies (z-score) with Strong Events Highlighted (Threshold =", threshold, ")"),
     y = "Anomaly (z-score)", x = "Month", color = "Strong Anomaly"
   ) +
-  theme_minimal()
+  theme_minimal() +
+  facet_wrap(~ season)
 
 # Classify direction of strong anomalies
 strong_anomalies <- df %>%
@@ -124,7 +125,8 @@ ggplot(df, aes(x = trip_month, y = anomaly_strength, color = direction)) +
     y = "Anomaly Strength (|z-score|)"
   ) +
   scale_color_manual(values = c("Positive" = "red", "Negative" = "blue")) +
-  theme_minimal()
+  theme_minimal() +
+  facet_wrap(~ season)
 
 
 df$season <- factor(df$season, levels = c("Winter", "Spring", "Summer", "Autumn"))
