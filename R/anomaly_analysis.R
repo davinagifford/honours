@@ -145,3 +145,4 @@ ggplot(anomaly, aes(x = season, y = anomaly, fill = season)) +
     plot.title = element_text(hjust = 0.5),
     legend.position = "none"
   )
+

@@ -207,3 +207,4 @@ ggplot(site_data, aes(x = RDA1, y = PC1, color = sst)) +
   labs(title = format(terms(rda_fit)),
        x = "RDA1", y = "PC1") +
   theme_minimal()
+

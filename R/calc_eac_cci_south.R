@@ -102,12 +102,12 @@ print(anova_rda)
 samp_score_s <- scores(rda_fit_south, display="wa")[, 1]
 sp_score_s <- scores(rda_fit_south, display="sp")[, 1]
 
-if (cor(samples_south$sst, samp_score_s, use="complete.obs") < 0) {
+if (cor(samples_south_aligned$sst, samp_score_s, use="complete.obs") < 0) {
     samp_score_s <- -samp_score_s
     sp_score_s <- -sp_score_s
 }
 
-samples_south <- samples_south %>% mutate(rda_score = samp_score_s)
+samples_south <- samples_south_aligned %>% mutate(rda_score = samp_score_s)
 
 head(samples_south)
 
