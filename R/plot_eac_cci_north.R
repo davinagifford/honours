@@ -182,7 +182,7 @@ site_data$sst <- samples_t$sst
 # 3. Extract and scale vectors
 
 # Extract and scale vectors properly
-vecs <- scores(fit_env, display = "vectors", scaling = "sites")  # This returns a matrix
+vecs <- scores(fit_env, display = "vectors", scaling = "sites")# This returns a matrix
 
 # Convert to data frame and scale by vector length (magnitude)
 vecs_df <- as.data.frame(vecs)

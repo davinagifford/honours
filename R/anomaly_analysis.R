@@ -4,7 +4,7 @@
 ###
 ### Created: 2025-08-08
 ### Author: Davina Gifford
-### Last updated: 2025-08-12
+### Last updated: 2025-08-13
 ### Edited by: Davina Gifford
 
 
@@ -51,7 +51,7 @@ ggplot(anomaly, aes(x = trip_month, y = anomaly)) +
 threshold <- 1 # Adjust as needed
 
 # Calculate anomaly strength and classify direction
-df <- anomaly %>%
+anomaly <- anomaly %>%
   mutate(
     anomaly_z = (anomaly - mean(anomaly, na.rm = TRUE)) / sd(anomaly, na.rm = TRUE),
     anomaly_strength = abs(anomaly_z),
@@ -68,7 +68,7 @@ df <- anomaly %>%
 
 
 # Plot: EAC Climate Anomalies with Strong Events Highlighted
-ggplot(df, aes(x = trip_month, y = anomaly_z)) +
+ggplot(anomaly, aes(x = trip_month, y = anomaly_z)) +
   geom_line() +
   geom_point(aes(color = is_strong), size = 2) +
   scale_color_manual(values = c("FALSE" = "black", "TRUE" = "red")) +
@@ -81,7 +81,7 @@ ggplot(df, aes(x = trip_month, y = anomaly_z)) +
   facet_wrap(~ season)
 
 # Classify direction of strong anomalies
-strong_anomalies <- df %>%
+strong_anomalies <- anomaly %>%
   filter(is_strong)
 
 # Count how many are positive vs negative
@@ -97,11 +97,11 @@ ggplot(strong_anomalies, aes(x = direction)) +
   theme_minimal()
 
 # Run ANOVA
-anova_model <- aov(anomaly_strength ~ season, data = df)
+anova_model <- aov(anomaly_strength ~ season, data = anomaly)
 summary(anova_model)
 
 # Full LOESS-smoothed anomaly strength plot
-ggplot(df, aes(x = trip_month, y = anomaly_strength)) +
+ggplot(anomaly, aes(x = trip_month, y = anomaly_strength)) +
   geom_point(color = "black", alpha = 0.6) +
   geom_smooth(method = "loess", span = 0.2, se = FALSE, color = "green", linewidth = 1.2) +
   labs(
@@ -112,7 +112,7 @@ ggplot(df, aes(x = trip_month, y = anomaly_strength)) +
   theme_minimal()
 
 # Plot with separate LOESS lines by direction
-ggplot(df, aes(x = trip_month, y = anomaly_strength, color = direction)) +
+ggplot(anomaly, aes(x = trip_month, y = anomaly_strength, color = direction)) +
   geom_point(alpha = 0.6) +
   geom_smooth(method = "loess", span = 0.3, se = FALSE, linewidth = 1, linetype = "dashed") +
   scale_x_date(
@@ -129,11 +129,11 @@ ggplot(df, aes(x = trip_month, y = anomaly_strength, color = direction)) +
   facet_wrap(~ season)
 
 
-df$season <- factor(df$season, levels = c("Winter", "Spring", "Summer", "Autumn"))
+anomaly$season <- factor(anomaly$season, levels = c("Winter", "Spring", "Summer", "Autumn"))
 
 # seasonal breakdown of anomalies
 # Basic boxplot
-ggplot(df, aes(x = season, y = anomaly, fill = season)) +
+ggplot(anomaly, aes(x = season, y = anomaly, fill = season)) +
   geom_boxplot(alpha = 0.6) +
   labs(
     title = "EAC CCI Anomalies by Season",
