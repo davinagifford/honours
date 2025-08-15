@@ -64,6 +64,25 @@ clim_points <-
     mutate(doy = pmin(yday(sample_time), 365)) %>%
     left_join(climatology %>% select(doy, eac_cci), by = "doy")
 
+# Plot index without climatology
+p <-
+  ggplot(month_data_t, aes(x = sample_time, y = eac_cci)) +
+  geom_line(linewidth = 1, colour = "black") +
+  geom_point(size = 3, shape = 21, fill = "black") +
+  scale_x_datetime(date_breaks = "1 year", minor_breaks = NULL,
+                   date_labels = "%Y") +
+  geom_smooth(method = "loess", se = TRUE, color = "black", linetype = "dashed") +
+  theme(axis.title = element_text(size = 14), 
+        plot.title = element_text(size = 18, face = "bold")) +
+  labs(x = "Time",
+       y = "EAC copepod composition index",
+       title = "EAC copepod composition index (monthly average)") 
+
+ggsave(file.path("output", "eac_cci_noclim.png"),
+       plot = p, width = 1200 / 96, height = 600 / 96, dpi = 96,
+       device = png)
+
+# Plot index with climatology
 p <-
     ggplot(mapping = aes(sample_time, eac_cci)) +
     geom_segment(data = month_data_t,
