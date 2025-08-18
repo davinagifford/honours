@@ -17,7 +17,8 @@ soi_data <- read_csv("data/soi_monthly.csv")
 
 # Convert yyyymm to Date (first day of month)
 soi_data <- soi_data %>%
-  mutate(Date = ymd(paste0(Date, "01")))
+  mutate(Date = ymd(paste0(Date, "01"))) %>% 
+  filter(Date < "2025-01-01")
 
 p <- ggplot(soi_data, aes(x = Date, y = SOI)) +
   geom_line(linewidth = 1, colour = "black") +
@@ -93,3 +94,46 @@ ggsave(file.path("output", "SAM.png"),
         plot = p, width = 1200 / 96, height = 600 / 96, dpi = 96,
         device = png)
  
+ 
+ # compare CCI values with climate drivers
+ 
+
+ 
+ # Join datasets by date
+ combined_data <- month_data_t %>%
+   mutate(Date = as.Date(trip_month)) %>%
+   inner_join(soi_data, by = "Date")
+ 
+ # Rescale SOI for plotting (adjust factor as needed)
+ soi_scale_factor <- max(combined_data$eac_cci, na.rm = TRUE) / max(abs(combined_data$SOI), na.rm = TRUE)
+ combined_data <- combined_data %>%
+   mutate(SOI_scaled = SOI * soi_scale_factor)
+ 
+ # Plot with dual y-axis
+ p <- ggplot(combined_data, aes(x = Date)) +
+   geom_line(aes(y = eac_cci), colour = "black", linewidth = 1) +
+   geom_point(aes(y = eac_cci), size = 3, shape = 21, fill = "black") +
+   geom_smooth(aes(y = eac_cci), method = "loess", se = TRUE, color = "black", linetype = "dashed") +
+   geom_line(aes(y = SOI_scaled), colour = "blue", linewidth = 1) +
+   geom_point(aes(y = SOI_scaled), size = 3, shape = 21, fill = "blue") +
+   geom_smooth(aes(y = SOI_scaled), method = "loess", se = TRUE, color = "blue", linetype = "dashed") +
+   scale_x_date(date_breaks = "1 year", date_labels = "%Y") +
+   scale_y_continuous(
+     name = "EAC copepod composition index",
+     sec.axis = sec_axis(~ . / soi_scale_factor, name = "SOI")
+   ) +
+   theme(
+     axis.title.y = element_text(size = 14, color = "black"),
+     axis.title.y.right = element_text(size = 14, color = "blue"),
+     plot.title = element_text(size = 18, face = "bold")
+   ) +
+   labs(
+     x = "Time",
+     title = "EAC copepod composition index & SOI (monthly average)"
+   )
+ 
+
+ 
+ ggsave(file.path("output", "eac_cci_soi_combined.png"),
+        plot = p, width = 1200 / 96, height = 600 / 96, dpi = 96,
+        device = png)
