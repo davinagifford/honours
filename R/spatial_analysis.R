@@ -60,6 +60,21 @@ df <- data.frame(
 )
 
 
+comparison_ns_model <- lm(North ~ South, data = df)
+
+# Save diagnostic plots to a PNG file
+png(filename = "output/north-south-resid.png", width = 1200, height = 600)
+
+# Set up 2x2 layout and plot diagnostics
+par(mfrow = c(2, 2))
+plot(comparison_ns_model)
+
+# Close the PNG device
+dev.off()
+
+
+
+
 # Plot
 ggplot(df, aes(x = South, y = North)) +
   geom_point(color = "black", size = 3) +
@@ -95,6 +110,10 @@ acf(monthly_avg_north$avg_eac_cci, main = "Autocorrelation - North Region EAC CC
 df_clean <- df %>% filter(!is.na(South) & !is.na(North))
 # Fit linear model: North as a function of South
 lm_fit_north <- lm(North ~ South, data = df_clean)
+
+par(mfrow = c(2, 2))  # Arrange plots in a 2x2 grid
+plot(lm_fit_north)
+
 
 # Extract residuals
 residuals_north <- resid(lm_fit_north)
@@ -178,3 +197,31 @@ draw(lm_fit)
 
 print(summary(lm_fit))
 print(summary(lm_fit_south))
+
+
+
+
+# linear regression of North v South
+
+# Fit a linear model
+ns_model <- lm(North ~ South, data = df_clean)
+
+# Summary of the model
+summary(ns_model)
+
+# Plot the regression
+plot(df_clean$North, df_clean$South, main = "Regression of North EAC CCI on South EAC CCI",
+     xlab = "North EAC CCI", ylab = "South EAC CCI", pch = 19)
+abline(model, col = "blue", lwd = 2)
+
+
+
+plot(ns_model$fitted.values, ns_model$residuals,
+     main = "Residuals vs Fitted Values",
+     xlab = "Fitted Values",
+     ylab = "Residuals",
+     pch = 19, col = "darkgreen")
+abline(h = 0, col = "red", lwd = 2)
+
+par(mfrow = c(2, 2))  # Arrange plots in a 2x2 grid
+plot(ns_model)

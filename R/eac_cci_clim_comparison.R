@@ -137,3 +137,93 @@ ggsave(file.path("output", "SAM.png"),
  ggsave(file.path("output", "eac_cci_soi_combined.png"),
         plot = p, width = 1200 / 96, height = 600 / 96, dpi = 96,
         device = png)
+
+ 
+ # test similarity between cci and soi values
+ 
+ 
+combined_data_forcorr <- combined_data %>%
+   select(Date, eac_cci, SOI) %>%
+   drop_na()
+ 
+correlation <- cor(combined_data_forcorr$eac_cci, combined_data_forcorr$SOI, method = "pearson")
+print(paste("Pearson correlation between EAC CCI and SOI:", correlation)) 
+
+# anova
+ 
+anova_result <- aov(eac_cci ~ SOI, data = combined_data_forcorr)
+
+summary(anova_result)
+
+
+
+
+# linear regression of EAC CCI against SOI
+
+# Fit a linear model
+model <- lm(eac_cci ~ SOI, data = combined_data)
+
+# Summary of the model
+summary(model)
+
+# Plot the regression
+plot(combined_data$SOI, combined_data$eac_cci, main = "Regression of EAC CCI on SOI",
+     xlab = "SOI", ylab = "EAC CCI", pch = 19)
+abline(model, col = "blue", lwd = 2)
+
+
+plot(model$fitted.values, model$residuals,
+     main = "Residuals vs Fitted Values",
+     xlab = "Fitted Values",
+     ylab = "Residuals",
+     pch = 19, col = "darkgreen")
+abline(h = 0, col = "red", lwd = 2)
+
+
+# Save diagnostic plots to a PNG file
+png(filename = "output/eac-soi-diagnostic.png", width = 1200, height = 600)
+
+# Set up 2x2 layout and plot diagnostics
+par(mfrow = c(2, 2))
+plot(model)
+
+# Close the PNG device
+dev.off()
+
+
+# Cross-correlation function to explore lagged relationships
+ccf_result <- ccf(combined_data$SOI, combined_data$eac_cci, lag.max = 12, plot = TRUE,
+                  main = "Cross-Correlation between SOI and EAC CCI")
+
+
+
+# Extract correlation values and corresponding lags
+correlations <- ccf_result$acf[,1,1]
+lags <- ccf_result$lag[,1,1]
+
+# Find the lag with the highest absolute correlation
+max_index <- which.max(abs(correlations))
+best_lag <- lags[max_index]
+best_corr <- correlations[max_index]
+
+# Print result
+cat("Lag with highest cross-correlation:", best_lag, "months\n")
+cat("Correlation coefficient:", round(best_corr, 3), "\n")
+
+
+
+
+# Create lagged SOI variable
+combined_data$SOI_lagged <- dplyr::lag(combined_data$SOI, n = abs(best_lag))
+
+# If lag is negative, shift EAC_CCI instead
+if (best_lag < 0) {
+  combined_data$eac_cci_lagged <- dplyr::lag(combined_data$eac_cci, n = abs(best_lag))
+  lag_model <- lm(eac_cci_lagged ~ SOI, data = combined_data)
+} else {
+  lag_model <- lm(eac_cci ~ SOI_lagged, data = combined_data)
+}
+
+# View regression summary
+summary(lag_model)
+
