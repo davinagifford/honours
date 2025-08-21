@@ -282,11 +282,11 @@ enso_combined_data_forcorr <- combined_data_enso %>%
   drop_na()
 
 correlation_enso <- cor(enso_combined_data_forcorr$eac_cci, enso_combined_data_forcorr$anom, method = "pearson")
-print(paste("Pearson correlation between EAC CCI and ENSO Index (Nino3.4 Anomaly:", correlation)) 
+print(paste("Pearson correlation between EAC CCI and ENSO Index (Nino3.4 Anomaly:", correlation_enso)) 
 
 # anova
 
-anova_result_enso <- aov(eac_cci ~ anom, data = enso_ombined_data_forcorr)
+anova_result_enso <- aov(eac_cci ~ anom, data = enso_combined_data_forcorr)
 
 summary(anova_result_enso)
 
@@ -414,7 +414,7 @@ sam_combined_data_forcorr <- combined_data_sam %>%
   drop_na()
 
 correlation_sam <- cor(sam_combined_data_forcorr$eac_cci, sam_combined_data_forcorr$aao_index_cdas, method = "pearson")
-print(paste("Pearson correlation between EAC CCI and Southern Annular Mode:", correlation)) 
+print(paste("Pearson correlation between EAC CCI and Southern Annular Mode:", correlation_sam)) 
 
 # anova
 
