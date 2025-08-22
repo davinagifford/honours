@@ -33,7 +33,6 @@ data_tbl <- tnc %>%
 print(data_tbl)
 
 
-
 raw_nc_data <- tnc %>%
   hyper_tibble(select_var = "VCUR")
 
