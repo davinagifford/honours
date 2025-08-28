@@ -346,28 +346,28 @@ with_vel <- with_vel %>%
   ) 
 
 str_combined_data_forcorr <- with_vel %>%
-  select(month, eac_cci, mean_vcur) %>%
+  select(month, observed_eac_cci, mean_vcur) %>%
   drop_na()
 
-correlation_str <- cor(str_combined_data_forcorr$eac_cci, str_combined_data_forcorr$mean_vcur, method = "pearson")
-print(paste("Pearson correlation between EAC CCI and vel:", correlation_str)) 
+correlation_str <- cor(str_combined_data_forcorr$observed_eac_cci, str_combined_data_forcorr$mean_vcur, method = "pearson")
+print(paste("Pearson correlation between EAC CCI and strength:", correlation_str)) 
 
 # anova
 
-anova_result_str <- aov(eac_cci ~ mean_vcur, data = str_combined_data_forcorr)
+anova_result_str <- aov(observed_eac_cci ~ mean_vcur, data = str_combined_data_forcorr)
 
 summary(anova_result_str)
 
 # linear regression of EAC CCI against strength
 
 # Fit a linear model
-model_str <- lm(eac_cci ~ mean_vcur, data = with_vel)
+model_str <- lm(observed_eac_cci ~ mean_vcur, data = with_vel)
 
 # Summary of the model
 summary(model_str)
 
 # Plot the regression
-plot(with_vel$mean_vcur, with_vel$eac_cci, main = "Regression of EAC CCI on strength",
+plot(with_vel$mean_vcur, with_vel$observed_eac_cci, main = "Regression of EAC CCI on strength",
      xlab = "Mean Strength", ylab = "EAC CCI", pch = 19)
 abline(model_str, col = "blue", lwd = 2)
 
@@ -392,10 +392,10 @@ dev.off()
 
 
 # Remove rows with NA in either column
-clean_data <- na.omit(with_vel[, c("mean_vcur", "eac_cci")])
+clean_data <- na.omit(with_vel[, c("mean_vcur", "observed_eac_cci")])
 
 # Run CCF on cleaned data
-ccf_result_str <- ccf(clean_data$mean_vcur, clean_data$eac_cci, lag.max = 12, plot = TRUE,
+ccf_result_str <- ccf(clean_data$mean_vcur, clean_data$observed_eac_cci, lag.max = 12, plot = TRUE,
                       main = "Cross-Correlation between Strength and EAC CCI")
 
 
@@ -421,10 +421,10 @@ with_vel$str_lagged <- dplyr::lag(with_vel$mean_vcur, n = abs(best_lag))
 
 # If lag is negative, shift EAC_CCI instead
 if (best_lag < 0) {
-  with_vel$eac_cci_lagged <- dplyr::lag(with_vel$eac_cci, n = abs(best_lag))
+  with_vel$eac_cci_lagged <- dplyr::lag(with_vel$observed_eac_cci, n = abs(best_lag))
   lag_model_str <- lm(eac_cci_lagged ~ mean_vcur, data = with_vel)
 } else {
-  lag_model_str <- lm(eac_cci ~ str_lagged, data = with_vel)
+  lag_model_str <- lm(observed_eac_cci ~ str_lagged, data = with_vel)
 }
 
 # View regression summary
@@ -488,7 +488,7 @@ dev.off()
 
 
 # Remove rows with NA in either column
-clean_data <- na.omit(with_vel[, c("mean_vcur", "eac_cci")])
+clean_data <- na.omit(with_vel[, c("mean_vcur", "observed_eac_cci")])
 
 # Run CCF on cleaned data
 ccf_result_anom <- ccf(anom_combined_data_forcorr$vcur_anomaly, anom_combined_data_forcorr$cci_anom, lag.max = 12, plot = TRUE,
@@ -535,4 +535,178 @@ ggplot(anom_combined_data_forcorr, aes(x = vcur_anomaly, y = cci_anom)) +
     y = "EAC CCI Anomaly",
     title = "Relationship Between EAC Strength and CCI Anomalies"
   )
+
+# compare temp with sst ---------------------------------------------------
+
+# read sst data
+sst <- samples %>% 
+  select(sample_time, sst)
+colnames(sst) <- c("date", "sst")
+sst <- sst %>%
+    mutate(
+      date = as.Date(sub("T.*", "", date)),
+      year = year(date),
+      month = month(date)
+    ) %>%
+      group_by(year, month) %>%
+      summarise(sst = mean(sst, na.rm = TRUE), .groups = "drop") %>% 
+      mutate(date = as.Date(paste(year, month, "01", sep = "-"))) 
+
+
+sst_temp <- sst %>% 
+  left_join(vel_temp %>% mutate(date = vel_temp$date), by = "date")
+
+sst_temp <- sst_temp %>% 
+  select(year, month, date, sst, mean_temp)
+
+
+correlation_sst <- cor(sst_temp$sst, sst_temp$mean_temp, method = "pearson", use = "complete.obs")
+print(paste("Pearson correlation between Index SST and observed Temperature:", correlation_sst)) 
+
+# anova
+
+anova_result_sst <- aov(sst ~ mean_temp, data = sst_temp)
+
+summary(anova_result_sst)
+
+# linear regression of EAC CCI against strength anomalies
+
+# Fit a linear model
+model_sst <- lm(sst ~ mean_temp, data = sst_temp)
+
+# Summary of the model
+summary(model_sst)
+
+# Plot the regression
+plot(anom_combined_data_forcorr$vcur_anomaly, anom_combined_data_forcorr$cci_anom, main = "Regression of EAC CCI anomalies on strength anomalies",
+     xlab = "Mean Strength anomalies", ylab = "EAC CCI anomalies", pch = 19)
+abline(model_anom, col = "blue", lwd = 2)
+
+
+plot(model_anom$fitted.values, model_anom$residuals,
+     main = "Residuals vs Fitted Values",
+     xlab = "Fitted Values",
+     ylab = "Residuals",
+     pch = 19, col = "darkgreen")
+abline(h = 0, col = "red", lwd = 2)
+
+
+# Save diagnostic plots to a PNG file
+png(filename = "output/anom-diagnostic.png", width = 1200, height = 600)
+
+# Set up 2x2 layout and plot diagnostics
+par(mfrow = c(2, 2))
+plot(model_anom)
+
+# Close the PNG device
+dev.off()
+
+
+# Remove rows with NA in either column
+clean_data <- na.omit(with_vel[, c("mean_vcur", "observed_eac_cci")])
+
+# Run CCF on cleaned data
+ccf_result_anom <- ccf(anom_combined_data_forcorr$vcur_anomaly, anom_combined_data_forcorr$cci_anom, lag.max = 12, plot = TRUE,
+                       main = "Cross-Correlation between the anomalies in Strength and EAC CCI")
+
+
+
+# Extract correlation values and corresponding lags
+correlations <- ccf_result_anom$acf[,1,1]
+lags <- ccf_result_anom$lag[,1,1]
+
+# Find the lag with the highest absolute correlation
+max_index <- which.max(abs(correlations))
+best_lag <- lags[max_index]
+best_corr <- correlations[max_index]
+
+# Print result
+cat("Lag with highest cross-correlation:", best_lag, "months\n")
+cat("Correlation coefficient:", round(best_corr, 3), "\n")
+
+
+
+
+# Create lagged strength variable
+anom_combined_data_forcorr$vcur_lagged <- dplyr::lag(anom_combined_data_forcorr$vcur_anomaly, n = abs(best_lag))
+
+# If lag is negative, shift EAC_CCI instead
+if (best_lag < 0) {
+  anom_combined_data_forcorr$cci_anom_lagged <- dplyr::lag(anom_combined_data_forcorr$cci_anom, n = abs(best_lag))
+  lag_model_anom <- lm(cci_anom_lagged ~ vcur_anomaly, data = anom_combined_data_forcorr)
+} else {
+  lag_model_anom <- lm(cci_anom ~ vcur_lagged, data = anom_combined_data_forcorr)
+}
+
+# View regression summary
+summary(lag_model_anom)
+
+
+
+
+# compare SST with Strength -----------------------------------------------
+
+sst_str <- sst %>% 
+  left_join(vel_temp %>% mutate(date = vel_temp$date), by = "date")
+
+sst_str <- sst_str %>% 
+  select(year, month, date, sst, mean_vcur)
+
+correlation_sst_str <- cor(sst_str$sst, sst_str$mean_vcur, method = "pearson", use = "complete.obs")
+print(paste("Pearson correlation between Index SST and observed strength:", correlation_sst_str)) 
+
+# anova
+
+anova_result_sst_str <- aov(sst ~ mean_vcur, data = sst_str)
+
+summary(anova_result_sst_str)
+
+# linear regression of EAC CCI against strength anomalies
+
+# Fit a linear model
+model_sst_str <- lm(sst ~ mean_vcur, data = sst_str)
+
+# Summary of the model
+summary(model_sst_str)
+
+
+# Remove rows with NA in either column
+clean_data_sst_str <- na.omit(sst_str[, c("mean_vcur", "sst")])
+
+# Run CCF on cleaned data
+ccf_result_sst_str <- ccf(clean_data_sst_str$mean_vcur, clean_data_sst_str$sst, lag.max = 12, plot = TRUE,
+                       main = "Cross-Correlation between the Mean strength and SST used in Index")
+
+
+
+# Extract correlation values and corresponding lags
+correlations <- ccf_result_sst_str$acf[,1,1]
+lags <- ccf_result_sst_str$lag[,1,1]
+
+# Find the lag with the highest absolute correlation
+max_index <- which.max(abs(correlations))
+best_lag <- lags[max_index]
+best_corr <- correlations[max_index]
+
+# Print result
+cat("Lag with highest cross-correlation:", best_lag, "months\n")
+cat("Correlation coefficient:", round(best_corr, 3), "\n")
+
+
+
+
+# Create lagged strength variable
+sst_str$vcur_lagged <- dplyr::lag(sst_str$mean_vcur, n = abs(best_lag))
+
+# If lag is negative, shift SST instead
+if (best_lag < 0) {
+  sst_str$sst_lagged <- dplyr::lag(sst_str$sst, n = abs(best_lag))
+  lag_model_sst_str <- lm(sst_lagged ~ mean_vcur, data = sst_str)
+} else {
+  lag_model_sst_str <- lm(sst ~ vcur_lagged, data = sst_str)
+}
+
+# View regression summary
+summary(lag_model_sst_str)
+
 
