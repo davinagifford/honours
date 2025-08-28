@@ -710,3 +710,22 @@ if (best_lag < 0) {
 summary(lag_model_sst_str)
 
 
+# compare all the things --------------------------------------------------
+
+# Combine temp, sst, strength, and index data
+
+all_data <- with_vel %>%
+  select(date, observed_eac_cci, mean_vcur) %>%
+  left_join(vel_temp %>% select(date, mean_temp), by = "date") %>%
+  left_join(sst %>% select(date, sst), by = "date")
+
+# create a scatterplot matrix of the variables
+
+pairs(all_data[, -1], main = "Scatterplot Matrix of EAC CCI, Strength, Temperature, and SST")
+# calculate correlation matrix
+cor_matrix <- cor(all_data[, -1], use = "complete.obs")
+print(cor_matrix)
+# visualize correlation matrix
+library(corrplot)
+corrplot(cor_matrix, method = "circle", type = "upper", tl.col = "black", tl.srt = 45,
+         title = "Correlation Matrix of EAC CCI, Strength, Temperature, and SST", mar = c(0,0,1,0))

@@ -10,6 +10,7 @@
 library(tidyverse)
 library(ggplot2)
 library(lubridate)
+library(stats)
 
 # load SOI data
 
@@ -425,13 +426,14 @@ summary(anova_result_sam)
 
 
 
-# linear regression of EAC CCI against SOI
+# linear regression of EAC CCI against SAM
 
 # Fit a linear model
 model_sam <- lm(eac_cci ~ aao_index_cdas, data = combined_data_sam)
 
 # Summary of the model
 summary(model_sam)
+anova(model_sam)
 
 # Plot the regression
 plot(combined_data_sam$aao_index_cdas, combined_data_sam$eac_cci, main = "Regression of EAC CCI on SAM",
@@ -496,3 +498,27 @@ summary(lag_model_sam)
 
 
 
+
+# Compare all the things --------------------------------------------------
+
+combined_all <- combined_data %>%
+  select(Date, eac_cci, SOI) %>%
+  rename(full_date = Date) %>%
+  inner_join(enso_data %>% select(Date, anom) %>% rename(full_date = Date), by = "full_date") %>%
+  inner_join(sam_data %>% select(full_date, aao_index_cdas), by = "full_date")
+
+
+full_model <- lm(eac_cci ~ SOI * anom * aao_index_cdas, data = combined_all)
+summary(full_model)
+
+qqnorm(full_model$residuals) 
+qqline(full_model$residuals, col = "red")
+
+step_model <- step(full_model, direction = "both")
+summary(step_model)
+
+anova(step_model)
+
+
+soi_anom <- lm(eac_cci ~ SOI * anom, data = combined_all)
+summary(soi_anom)
