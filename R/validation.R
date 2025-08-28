@@ -119,8 +119,63 @@ ggsave(file.path("output", "mean-temp_100m.png"),
        plot = p, width = 1200 / 96, height = 600 / 96, dpi = 96,
        device = png)
 
+# calculate a climatology
 
-# is there a relationship between velocity and temperature? 
+
+climatology_str <- data_tbl %>%
+  group_by(month) %>%
+  summarise(
+    str_clim = mean(mean_vcur, na.rm = TRUE), .groups = "drop"
+  )
+
+
+
+# Strength against climatology --------------------------------------------
+
+strength_with_clim <- data_tbl %>%
+  left_join(climatology_str, by = "month") %>%
+  mutate(
+    vcur_anomaly = mean_vcur - str_clim,
+    anom_label = case_when(
+      vcur_anomaly > 0 ~ "Anomaly (+)",
+      TRUE ~ "Anomaly (-)"
+    )
+  )
+
+str_anom <- strength_with_clim %>% 
+  select(vcur_anomaly)
+
+# Plot strength with climatology
+p <- ggplot(strength_with_clim, aes(x = date, y = mean_vcur)) +
+  geom_segment(aes(xend = date, yend = str_clim,
+                   colour = anom_label, linetype = anom_label),
+               linewidth = 1.5) +
+  geom_line(aes(y = str_clim, colour = "Climatology", linetype = "Climatology"),
+            linewidth = 1) +
+  geom_point(size = 3, shape = 21, fill = "black") +
+  scale_colour_manual(breaks = c("Anomaly (+)", "Anomaly (-)", "Climatology"),
+                      values = c("red", "blue", "black")) +
+  scale_linetype_manual(breaks = c("Anomaly (+)", "Anomaly (-)", "Climatology"),
+                        values = c("solid", "solid", "solid")) +
+  scale_x_date(date_breaks = "1 year", date_labels = "%Y") +
+  theme(axis.title = element_text(size = 14),
+        plot.title = element_text(size = 18, face = "bold")) +
+  labs(x = "Time",
+       y = "Strength ",
+       colour = NULL,
+       linetype = NULL,
+       title = "EAC strength (Monthly Average)")
+
+  
+ggsave(file.path("output", "strength-with-clim.png"),
+       plot = p, width = 1200 / 96, height = 600 / 96, dpi = 96,
+       device = png)
+
+
+
+# # is there a relationship between velocity and temperature?  ------------
+
+
 
 vel_temp <- data_tbl %>%
   left_join(temp_tbl, by = "date") %>%
@@ -247,25 +302,25 @@ summary(lag_model_vt)
 
 # plot with the index values
 
-with_vel <- month_data_t %>%
+with_vel <- anomaly %>%
   mutate(date = as.Date(trip_month)) %>%
-  left_join(data_tbl, by = "date")
+  full_join(data_tbl, by = "date")
 
 
-velocity_scale <- max(with_vel$eac_cci, na.rm = TRUE) / max(abs(with_vel$mean_vcur), na.rm = TRUE)
+velocity_scale <- max(with_vel$anomaly, na.rm = TRUE) / max(abs(with_vel$mean_vcur), na.rm = TRUE)
 
 with_vel <- with_vel %>%
   mutate(vel_scale = mean_vcur * velocity_scale)
 
 p <- ggplot(with_vel, aes(x = date)) +
-  geom_line(aes(y = eac_cci), colour = "black", linewidth = 1) +
-  geom_point(aes(y = eac_cci), size = 3, shape = 21, fill = "black") +
-  geom_smooth(aes(y = eac_cci), method = "loess", se = TRUE, color = "black", linetype = "dashed") +
+  geom_line(aes(y = anomaly), colour = "black", linewidth = 1) +
+  geom_point(aes(y = anomaly), size = 3, shape = 21, fill = "black") +
+  geom_smooth(aes(y = anomaly), method = "loess", se = TRUE, color = "black", linetype = "dashed") +
   geom_line(aes(y = mean_vcur), colour = "blue", linewidth = 1) +
   geom_point(aes(y = mean_vcur), size = 3, shape = 21, fill = "blue") +
   geom_smooth(aes(y = mean_vcur), method = "loess", se = TRUE, color = "blue", linetype = "dashed") +
   scale_x_date(date_breaks = "1 year", date_labels = "%Y") +
-  scale_y_continuous(name = "EAC copepod composition index",
+  scale_y_continuous(name = "EAC copepod composition index - anomaly",
                      sec.axis = sec_axis(~ .,  name = "Monthy mean strength")) +
   theme(
     axis.title.y = element_text(size = 14, color = "black"),
@@ -281,3 +336,203 @@ p <- ggplot(with_vel, aes(x = date)) +
 ggsave(file.path("output", "eac_cci_vel_combined.png"),
        plot = p, width = 1200 / 96, height = 600 / 96, dpi = 96,
        device = png)
+
+# test similarity between cci and strength values
+
+with_vel <- with_vel %>% 
+  mutate(
+    year = year(trip_month),
+    month = month(trip_month)
+  ) 
+
+str_combined_data_forcorr <- with_vel %>%
+  select(month, eac_cci, mean_vcur) %>%
+  drop_na()
+
+correlation_str <- cor(str_combined_data_forcorr$eac_cci, str_combined_data_forcorr$mean_vcur, method = "pearson")
+print(paste("Pearson correlation between EAC CCI and vel:", correlation_str)) 
+
+# anova
+
+anova_result_str <- aov(eac_cci ~ mean_vcur, data = str_combined_data_forcorr)
+
+summary(anova_result_str)
+
+# linear regression of EAC CCI against strength
+
+# Fit a linear model
+model_str <- lm(eac_cci ~ mean_vcur, data = with_vel)
+
+# Summary of the model
+summary(model_str)
+
+# Plot the regression
+plot(with_vel$mean_vcur, with_vel$eac_cci, main = "Regression of EAC CCI on strength",
+     xlab = "Mean Strength", ylab = "EAC CCI", pch = 19)
+abline(model_str, col = "blue", lwd = 2)
+
+
+plot(model_str$fitted.values, model_str$residuals,
+     main = "Residuals vs Fitted Values",
+     xlab = "Fitted Values",
+     ylab = "Residuals",
+     pch = 19, col = "darkgreen")
+abline(h = 0, col = "red", lwd = 2)
+
+
+# Save diagnostic plots to a PNG file
+png(filename = "output/eac-str-diagnostic.png", width = 1200, height = 600)
+
+# Set up 2x2 layout and plot diagnostics
+par(mfrow = c(2, 2))
+plot(model_str)
+
+# Close the PNG device
+dev.off()
+
+
+# Remove rows with NA in either column
+clean_data <- na.omit(with_vel[, c("mean_vcur", "eac_cci")])
+
+# Run CCF on cleaned data
+ccf_result_str <- ccf(clean_data$mean_vcur, clean_data$eac_cci, lag.max = 12, plot = TRUE,
+                      main = "Cross-Correlation between Strength and EAC CCI")
+
+
+
+# Extract correlation values and corresponding lags
+correlations <- ccf_result_str$acf[,1,1]
+lags <- ccf_result_str$lag[,1,1]
+
+# Find the lag with the highest absolute correlation
+max_index <- which.max(abs(correlations))
+best_lag <- lags[max_index]
+best_corr <- correlations[max_index]
+
+# Print result
+cat("Lag with highest cross-correlation:", best_lag, "months\n")
+cat("Correlation coefficient:", round(best_corr, 3), "\n")
+
+
+
+
+# Create lagged strength variable
+with_vel$str_lagged <- dplyr::lag(with_vel$mean_vcur, n = abs(best_lag))
+
+# If lag is negative, shift EAC_CCI instead
+if (best_lag < 0) {
+  with_vel$eac_cci_lagged <- dplyr::lag(with_vel$eac_cci, n = abs(best_lag))
+  lag_model_str <- lm(eac_cci_lagged ~ mean_vcur, data = with_vel)
+} else {
+  lag_model_str <- lm(eac_cci ~ str_lagged, data = with_vel)
+}
+
+# View regression summary
+summary(lag_model_str)
+
+
+
+
+
+
+# compare anomaly of index with anomaly of strength -----------------------
+
+cci_strn <- anomaly %>%
+  select(date = trip_month, cci_anom = anomaly) %>%
+  left_join(str_anom %>% mutate(date = data_tbl$date), by = "date")
+
+anom_combined_data_forcorr <- cci_strn %>%
+  select(date, cci_anom, vcur_anomaly) %>%
+  drop_na()
+
+correlation_anom <- cor(anom_combined_data_forcorr$cci_anom, anom_combined_data_forcorr$vcur_anomaly, method = "pearson")
+print(paste("Pearson correlation between EAC CCI and strength anomalies:", correlation_anom)) 
+
+# anova
+
+anova_result_anom <- aov(cci_anom ~ vcur_anomaly, data = anom_combined_data_forcorr)
+
+summary(anova_result_anom)
+
+# linear regression of EAC CCI against strength anomalies
+
+# Fit a linear model
+model_anom <- lm(cci_anom ~ vcur_anomaly, data = anom_combined_data_forcorr)
+
+# Summary of the model
+summary(model_anom)
+
+# Plot the regression
+plot(anom_combined_data_forcorr$vcur_anomaly, anom_combined_data_forcorr$cci_anom, main = "Regression of EAC CCI anomalies on strength anomalies",
+     xlab = "Mean Strength anomalies", ylab = "EAC CCI anomalies", pch = 19)
+abline(model_anom, col = "blue", lwd = 2)
+
+
+plot(model_anom$fitted.values, model_anom$residuals,
+     main = "Residuals vs Fitted Values",
+     xlab = "Fitted Values",
+     ylab = "Residuals",
+     pch = 19, col = "darkgreen")
+abline(h = 0, col = "red", lwd = 2)
+
+
+# Save diagnostic plots to a PNG file
+png(filename = "output/anom-diagnostic.png", width = 1200, height = 600)
+
+# Set up 2x2 layout and plot diagnostics
+par(mfrow = c(2, 2))
+plot(model_anom)
+
+# Close the PNG device
+dev.off()
+
+
+# Remove rows with NA in either column
+clean_data <- na.omit(with_vel[, c("mean_vcur", "eac_cci")])
+
+# Run CCF on cleaned data
+ccf_result_anom <- ccf(anom_combined_data_forcorr$vcur_anomaly, anom_combined_data_forcorr$cci_anom, lag.max = 12, plot = TRUE,
+                      main = "Cross-Correlation between the anomalies in Strength and EAC CCI")
+
+
+
+# Extract correlation values and corresponding lags
+correlations <- ccf_result_anom$acf[,1,1]
+lags <- ccf_result_anom$lag[,1,1]
+
+# Find the lag with the highest absolute correlation
+max_index <- which.max(abs(correlations))
+best_lag <- lags[max_index]
+best_corr <- correlations[max_index]
+
+# Print result
+cat("Lag with highest cross-correlation:", best_lag, "months\n")
+cat("Correlation coefficient:", round(best_corr, 3), "\n")
+
+
+
+
+# Create lagged strength variable
+anom_combined_data_forcorr$vcur_lagged <- dplyr::lag(anom_combined_data_forcorr$vcur_anomaly, n = abs(best_lag))
+
+# If lag is negative, shift EAC_CCI instead
+if (best_lag < 0) {
+  anom_combined_data_forcorr$cci_anom_lagged <- dplyr::lag(anom_combined_data_forcorr$cci_anom, n = abs(best_lag))
+  lag_model_anom <- lm(cci_anom_lagged ~ vcur_anomaly, data = anom_combined_data_forcorr)
+} else {
+  lag_model_anom <- lm(cci_anom ~ vcur_lagged, data = anom_combined_data_forcorr)
+}
+
+# View regression summary
+summary(lag_model_anom)
+
+
+ggplot(anom_combined_data_forcorr, aes(x = vcur_anomaly, y = cci_anom)) +
+  geom_point(alpha = 0.7) +
+  geom_smooth(method = "lm", se = FALSE, color = "blue") +
+  labs(
+    x = "EAC Strength Anomaly (VCUR)",
+    y = "EAC CCI Anomaly",
+    title = "Relationship Between EAC Strength and CCI Anomalies"
+  )
+

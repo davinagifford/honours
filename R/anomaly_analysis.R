@@ -31,7 +31,7 @@ anomaly$trip_month <- as.Date(anomaly$trip_month)
 
 
 # Create the plot with a trend line
-ggplot(anomaly, aes(x = trip_month, y = anomaly)) +
+p <- ggplot(anomaly, aes(x = trip_month, y = anomaly)) +
   geom_line(color = "steelblue", linewidth = 1) +
   geom_point(color = "darkred", size = 2) +
   geom_smooth(method = "loess", se = TRUE, color = "black", linetype = "dashed") +
@@ -40,12 +40,12 @@ ggplot(anomaly, aes(x = trip_month, y = anomaly)) +
     x = "Trip Month",
     y = "EAC CCI Anomaly"
   ) +
-  theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
 # save image 
-# ggsave("EAC_CCI_Anomaly_Over_Time.png", width = 1200 / 96, height = 600 / 96, dpi = 96)
-
+ggsave(file.path("output", "cci-anomaly-full.png"),
+       plot = p, width = 1200 / 96, height = 600 / 96, dpi = 96,
+       device = png)
 
 # Set threshold for strong anomaly (z-score)
 threshold <- 1 # Adjust as needed

@@ -161,7 +161,7 @@ ggsave(file.path("output", "mean-wind-stress.png"),
         device = png)
 
  
- # test similarity between cci and soi values
+ # test similarity between cci and wind curl values
  
  
 curl_combined_data_forcorr <- combined_data_curl %>%
