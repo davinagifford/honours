@@ -723,9 +723,25 @@ all_data <- with_vel %>%
 
 pairs(all_data[, -1], main = "Scatterplot Matrix of EAC CCI, Strength, Temperature, and SST")
 # calculate correlation matrix
-cor_matrix <- cor(all_data[, -1], use = "complete.obs")
+cor_matrix <- cor(all_data[, -1], use = "pairwise.complete.obs")
 print(cor_matrix)
 # visualize correlation matrix
 library(corrplot)
 corrplot(cor_matrix, method = "circle", type = "upper", tl.col = "black", tl.srt = 45,
          title = "Correlation Matrix of EAC CCI, Strength, Temperature, and SST", mar = c(0,0,1,0))
+
+
+cor(all_data$sst, all_data$observed_eac_cci, method = "pearson", use = "complete.obs")
+
+summary(lm(sst ~ observed_eac_cci, data = all_data))
+summary(lm(sst ~ mean_temp, data = all_data))
+summary(lm(sst ~ mean_vcur, data = all_data))
+summary(lm(mean_temp ~ observed_eac_cci, data = all_data))
+summary(lm(mean_temp ~ mean_vcur, data = all_data))
+summary(lm(mean_vcur ~ observed_eac_cci, data = all_data))
+summary(lm(observed_eac_cci ~ mean_vcur, data = all_data))
+summary(lm(observed_eac_cci ~ mean_temp, data = all_data))
+summary(lm(observed_eac_cci ~ sst, data = all_data))
+summary(lm(mean_vcur ~ sst, data = all_data))
+summary(lm(mean_temp ~ sst, data = all_data))
+summary(lm(mean_vcur ~ mean_temp, data = all_data))
