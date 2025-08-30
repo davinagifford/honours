@@ -745,3 +745,30 @@ summary(lm(observed_eac_cci ~ sst, data = all_data))
 summary(lm(mean_vcur ~ sst, data = all_data))
 summary(lm(mean_temp ~ sst, data = all_data))
 summary(lm(mean_vcur ~ mean_temp, data = all_data))
+summary(lm(mean_vcur ~ mean_temp, data = all_data))
+summary(lm(north_index ~ mean_vcur, data = all_data))
+
+
+
+
+
+
+# Validate the strength against just the index values from the North
+
+all_data <- all_data %>% 
+  left_join(month_data_north %>% select(date = trip_month, north_index = eac_cci), by = "date")
+
+
+pairs(all_data[, -1], main = "Scatterplot Matrix of EAC CCI, Strength, Temperature, and SST")
+# calculate correlation matrix
+cor_matrix <- cor(all_data[, -1], use = "pairwise.complete.obs")
+print(cor_matrix)
+
+
+# Run Pearson correlation
+correlation <- cor(all_data$mean_vcur, all_data$north_index, method = "pearson", use = "pairwise.complete.obs")
+cor_test <- cor.test(all_data$mean_vcur, all_data$north_index, method = "pearson", use = "pairwise.complete.obs")
+
+# Output results
+print(paste("Pearson correlation:", round(correlation, 3)))
+print(cor_test)
