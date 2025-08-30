@@ -4,7 +4,7 @@
 ###
 ### Created: 2025-07-04
 ### Author: Davina Gifford
-### Last updated: 2025-08-13
+### Last updated: 2025-08-30
 ### Edited by: Davina Gifford
 
 # load libraries
@@ -13,7 +13,7 @@ library(lubridate)
 library(ggplot2)
 
 #Calculate monthly averages for south
-monthly_avg_south <- south_data %>%
+monthly_avg_south <- month_data_south %>%
   mutate(month = month(trip_month, label = TRUE)) %>%  # Extract month as a factor with labels
   group_by(month) %>%
   summarise(avg_eac_cci = mean(eac_cci, na.rm = TRUE), .groups = "drop")
@@ -21,7 +21,7 @@ monthly_avg_south <- south_data %>%
 print(monthly_avg_south)
 
 #Calculate monthly averages for north
-monthly_avg_north <- north_data %>%
+monthly_avg_north <- month_data_north %>%
   mutate(month = month(trip_month, label = TRUE)) %>%  # Extract month as a factor with labels
   group_by(month) %>%
   summarise(avg_eac_cci = mean(eac_cci, na.rm = TRUE), .groups = "drop")

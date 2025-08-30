@@ -4,7 +4,7 @@
 ###
 ### Created: 2023-07-21
 ### Author: Wayne A. Rochester
-### Last updated: 2025-07-02
+### Last updated: 2025-08-30
 ### Edited by: Davina Gifford
 
 library(lubridate)
@@ -44,7 +44,7 @@ climatology <- cci_data$climatology
 month_data <- cci_data$month_data
 
 
-month_data_t <-
+month_data_t_s <-
     month_data %>%
     mutate(sample_time = trip_month + ddays(days_in_month(trip_month)) * 0.5,
            sample_time = floor_date(sample_time, unit = "day"),
@@ -56,7 +56,7 @@ month_data_t <-
                                 "Anomaly (-)"))
 
 time_range <-
-    month_data_t %>%
+    month_data_t_s %>%
     reframe(time_range = range(sample_time)) %>%
     pull()
 clim_points <-
@@ -66,7 +66,7 @@ clim_points <-
 
 p <-
     ggplot(mapping = aes(sample_time, eac_cci)) +
-    geom_segment(data = month_data_t,
+    geom_segment(data = month_data_t_s,
                  mapping = aes(xend = sample_time, yend = eac_cci_clim,
                                colour = anom_label, linetype = anom_label),
                  linewidth = 1.2) +
@@ -74,7 +74,7 @@ p <-
               mapping = aes(linetype = "Climatology",
                             colour = "Climatology"),
               linewidth = 1.1) +
-    geom_point(data = month_data_t, size = 2.5, shape = 21, fill = "black") +
+    geom_point(data = month_data_t_s, size = 2.5, shape = 21, fill = "black") +
     scale_colour_manual(breaks = c("Anomaly (+)", "Anomaly (-)",
                                    "Climatology"),
                         values = c("red", "blue", "black")) +
@@ -83,6 +83,7 @@ p <-
                           values = c("solid", "solid", "solid")) +
     scale_x_datetime(date_breaks = "1 year", minor_breaks = NULL,
                      date_labels = "%Y") +
+    coord_cartesian(ylim = c(-0.3, 0.4)) +
     labs(x = "Time",
          y = "EAC copepod composition index",
          colour = NULL,
@@ -207,4 +208,6 @@ ggplot(site_data, aes(x = RDA1, y = PC1, color = sst)) +
   labs(title = format(terms(rda_fit)),
        x = "RDA1", y = "PC1") +
   theme_minimal()
-
+ggsave(file.path("output", "eac_cci_rda_envfit_south_ggplot.png"),
+       width = 800 / 96, height = 600 / 96, dpi = 96,
+       device = png)

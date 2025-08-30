@@ -4,7 +4,7 @@
 ###
 ### Created: 2023-07-25
 ### Author: Wayne A. Rochester
-### Last updated: 2025-04-28
+### Last updated: 2025-08_30
 ### Edited by: Davina Gifford
 
 ## The EAC copepod composition index (EAC CCI) is calculated by an RDA
@@ -18,7 +18,7 @@ library(tidyr)
 library(mgcv)
 library(vegan)
 library(gratia)
-
+library(tidyverse)
 
 catch_data <- readRDS(file.path("var", "catch_data.rds"))
 
@@ -153,6 +153,12 @@ samples <-
            eac_cci = rda_score - lat_eff) %>% # calculate CCI by removing latitude effect from RDA Score
     select(!lat_eff) # remove latitude effect column 
 
+# filter samples to North of separation zone
+samples_north <- samples %>% filter(latitude >= -32)
+
+# filter samples to South of separation zone 
+samples_south <- samples %>% filter(latitude < -32)
+
 
 ## Calculate a daily climatology of the EAC CCI as the sum of the
 ## relevant GAM prediction components (the intercept and day of year).
@@ -178,7 +184,7 @@ climatology <-
 ## When calculating monthly averages, we use average trip times rather
 ## than sample times to ensure that all samples from one trip are
 ## assigned to the same month. (Trips are only a few days long.)
-
+# full CCI
 month_data <-
     samples %>%
     group_by(trip_id) %>%
@@ -200,3 +206,53 @@ cci_data <- list(samples = samples,
                  climatology = climatology,
                  month_data = month_data)
 saveRDS(cci_data, file.path("var", "eac_cci.rds"))
+
+
+# North CCI
+
+month_data_north <-
+  samples_north %>%
+  group_by(trip_id) %>%
+  mutate(trip_time = mean(sample_time)) %>%
+  ungroup() %>%
+  mutate(trip_month = floor_date(trip_time, unit = "month")) %>%
+  group_by(trip_month) %>%
+  summarise(eac_cci = mean(eac_cci),
+            num_samples = n(),
+            .groups = "drop")
+
+cci_data_north <- list(samples = samples_north,
+                 species = species,
+                 catches = catches,
+                 catch_mtx = catch_mtx,
+                 catch_mtx_trfm = catch_mtx_trfm,
+                 rda_fit = rda_fit,
+                 lm_fit = lm_fit,
+                 climatology = climatology,
+                 month_data = month_data_north)
+saveRDS(cci_data_north, file.path("var", "eac_cci_north.rds"))
+
+
+# South CCI
+
+month_data_south <-
+  samples_south %>%
+  group_by(trip_id) %>%
+  mutate(trip_time = mean(sample_time)) %>%
+  ungroup() %>%
+  mutate(trip_month = floor_date(trip_time, unit = "month")) %>%
+  group_by(trip_month) %>%
+  summarise(eac_cci = mean(eac_cci),
+            num_samples = n(),
+            .groups = "drop")
+
+cci_data_south <- list(samples = samples_south,
+                 species = species,
+                 catches = catches,
+                 catch_mtx = catch_mtx,
+                 catch_mtx_trfm = catch_mtx_trfm,
+                 rda_fit = rda_fit,
+                 lm_fit = lm_fit,
+                 climatology = climatology,
+                 month_data = month_data_south)
+saveRDS(cci_data_south, file.path("var", "eac_cci_south.rds"))
