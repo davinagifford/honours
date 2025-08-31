@@ -116,7 +116,7 @@ ggsave(file.path("output", "mean-wind-stress.png"),
 
 
 
-# compare CCI values with SOI ---------------------------------------------
+# compare CCI values with wind curl stress ---------------------------------------------
 
  
 
@@ -169,7 +169,7 @@ curl_combined_data_forcorr <- combined_data_curl %>%
    drop_na()
  
 correlation_curl <- cor(curl_combined_data_forcorr$eac_cci, curl_combined_data_forcorr$mean_curl, method = "pearson")
-print(paste("Pearson correlation between EAC CCI and SOI:", correlation_curl)) 
+print(paste("Pearson correlation between EAC CCI and wind stress curl:", correlation_curl)) 
 
 # anova
  
@@ -180,7 +180,7 @@ summary(anova_result_curl)
 
 
 
-# linear regression of EAC CCI against SOI
+# linear regression of EAC CCI against wbdind stress curl
 
 # Fit a linear model
 model_curl <- lm(eac_cci ~ mean_curl, data = combined_data_curl)

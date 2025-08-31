@@ -505,7 +505,7 @@ combined_all <- combined_data %>%
   select(Date, eac_cci, SOI) %>%
   rename(full_date = Date) %>%
   inner_join(enso_data %>% select(Date, anom) %>% rename(full_date = Date), by = "full_date") %>%
-  inner_join(sam_data %>% select(full_date, aao_index_cdas), by = "full_date")
+  inner_join(sam_data %>% select(full_date, aao_index_cdas), by = "full_date") 
 
 
 full_model <- lm(eac_cci ~ SOI * anom * aao_index_cdas, data = combined_all)
@@ -522,3 +522,21 @@ anova(step_model)
 
 soi_anom <- lm(eac_cci ~ SOI * anom, data = combined_all)
 summary(soi_anom)
+anova(soi_anom)
+
+
+# include wind stress curl
+
+combined_all <- combined_all %>%
+  inner_join(combined_data_curl %>% select(trip_month, mean_curl) %>% rename(full_date = trip_month), by = "full_date")
+full_model2 <- lm(eac_cci ~ SOI * anom * aao_index_cdas * mean_curl, data = combined_all)
+summary(full_model2)
+step_model2 <- step(full_model2, direction = "both")
+summary(step_model2)
+anova(step_model2)
+
+# correlation matrix
+cor_matrix <- cor(combined_all[, -1], use = "pairwise.complete.obs")
+print(cor_matrix)
+
+
