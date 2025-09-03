@@ -366,6 +366,8 @@ model_str <- lm(observed_eac_cci ~ mean_vcur, data = with_vel)
 # Summary of the model
 summary(model_str)
 
+anova(model_str)
+
 # Plot the regression
 plot(with_vel$mean_vcur, with_vel$observed_eac_cci, main = "Regression of EAC CCI on strength",
      xlab = "Mean Strength", ylab = "EAC CCI", pch = 19)
@@ -431,7 +433,7 @@ if (best_lag < 0) {
 summary(lag_model_str)
 
 
-
+cor.test(with_vel$observed_eac_cci, with_vel$str_lagged, method = "pearson", use = "complete.obs")
 
 
 
@@ -708,6 +710,9 @@ if (best_lag < 0) {
 
 # View regression summary
 summary(lag_model_sst_str)
+
+cor(sst_str$sst_lagged, sst_str$mean_vcur, method = "pearson", use = "complete.obs")
+cor.test(sst_str$sst_lagged, sst_str$mean_vcur, method = "pearson", use = "complete.obs")
 
 
 # compare all the things --------------------------------------------------
