@@ -146,3 +146,54 @@ ggplot(anomaly, aes(x = season, y = anomaly, fill = season)) +
     legend.position = "none"
   )
 
+
+
+
+
+# 1. Calculate temperature anomalies (remove climatology)
+# Join temp_tbl with its climatology by day-of-year
+temp_anom <- temp_tbl %>%
+  mutate(doy = yday(date)) %>%
+  left_join(
+    climatology_str %>% select(doy, temp_clim = str_clim), # replace with your temp climatology if you have one
+    by = "doy"
+  ) %>%
+  mutate(temp_anomaly = mean_temp - temp_clim)
+
+# 2. Calculate EAC index anomalies (remove climatology)
+# Assuming you have a climatology for the EAC index (e.g., climatology$eac_cci)
+eac_anom <- anomaly %>%
+  select(date = trip_month, observed_eac_cci) %>%
+  mutate(doy = yday(date)) %>%
+  left_join(
+    climatology %>% select(sample_time, eac_cci_clim = eac_cci) %>% mutate(doy = yday(sample_time)),
+    by = "doy"
+  ) %>%
+  mutate(eac_cci_anomaly = observed_eac_cci - eac_cci_clim)
+
+# 3. Join the anomalies by date
+anom_compare <- temp_anom %>%
+  select(date, temp_anomaly) %>%
+  left_join(eac_anom %>% select(date, eac_cci_anomaly), by = "date") %>%
+  drop_na()
+
+# 4. Correlation and plot
+cor_result <- cor.test(anom_compare$temp_anomaly, anom_compare$eac_cci_anomaly, method = "pearson")
+print(cor_result)
+
+# Plot
+ggplot(anom_compare, aes(x = temp_anomaly, y = eac_cci_anomaly)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = TRUE, color = "blue") +
+  labs(
+    x = "Temperature Anomaly (°C)",
+    y = "EAC Index Anomaly",
+    title = "Residual Relationship: Temperature vs EAC Index"
+  ) +
+  annotate("text", 
+           x = min(anom_compare$temp_anomaly, na.rm = TRUE), 
+           y = max(anom_compare$eac_cci_anomaly, na.rm = TRUE), 
+           label = sprintf("r = %.2f\np = %.3g", cor_result$estimate, cor_result$p.value),
+           hjust = 0, vjust = 1, size = 5)
+
+# ...existing code...
