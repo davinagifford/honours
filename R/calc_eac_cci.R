@@ -120,7 +120,7 @@ samples <-
 
 # GAM ---------------------------------------------------------------------
 
-
+# cc = cyclic cubic spline - ensures continuity between Dec 31 and Jan 1
 
 lm_fit <- gam(rda_score ~ s(doy, bs = "cc", k = 5) + s(latitude) +
                   s(time_x, k = 25),
@@ -256,3 +256,9 @@ cci_data_south <- list(samples = samples_south,
                  climatology = climatology,
                  month_data = month_data_south)
 saveRDS(cci_data_south, file.path("var", "eac_cci_south.rds"))
+
+
+
+# GAM diagnostics
+
+gam.check(lm_fit)

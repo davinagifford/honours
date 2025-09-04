@@ -11,6 +11,8 @@
 library(tidyverse)
 library(ncdf4)
 library(tidync)
+library(mgcv)
+library(ggplot2)
 
 # read mooring data
 
@@ -122,49 +124,92 @@ ggsave(file.path("output", "mean-temp_100m.png"),
 # calculate a climatology
 
 
-climatology_str <- data_tbl %>%
-  group_by(month) %>%
-  summarise(
-    str_clim = mean(mean_vcur, na.rm = TRUE), .groups = "drop"
+current_data <- data_tbl %>%
+  mutate(,
+    doy = yday(date)
   )
 
+lm_fit_strength <- gam(mean_vcur ~ s(doy, bs = "cc"), data = current_data, method = "REML")
 
+mean_time <- median(current_data$date)
+time0 <- min(current_data$date)
+
+climatology_str <-
+  tibble(date = floor_date(mean_time, unit = "year") + days(0:364),
+         doy = yday(date),
+         time_x = time_length(interval(time0, mean_time), unit = "day"))
+
+clim_terms_str <- predict(lm_fit_strength, type = "terms", newdata = climatology_str)
+
+head(clim_terms_str)
+
+climatology_str <-
+  climatology_str %>%
+  mutate(doy_eff = clim_terms_str[, "s(doy)"],
+         intercept = coef(lm_fit_strength)["(Intercept)"],
+         str_clim = doy_eff + intercept) %>%
+  select(!c(doy_eff, intercept))
+
+climatology_str <- climatology_str %>%
+  mutate(date = as.POSIXct(date))
 
 # Strength against climatology --------------------------------------------
 
-strength_with_clim <- data_tbl %>%
-  left_join(climatology_str, by = "month") %>%
+time_range <- current_data %>%
+  reframe(time_range = range(date)) %>%
+  pull()
+
+
+clim_points <- tibble(date = seq(time_range[1], time_range[2], by = "1 day")) %>%
+  mutate(doy = pmin(yday(date), 365)) %>%
+  left_join(climatology_str %>% select(doy, str_clim), by = "doy")
+
+clim_points <- clim_points %>% 
+  mutate(date = as.POSIXct(date))
+
+
+
+ strength_with_clim <- current_data %>%
+  mutate(doy = yday(date)) %>%
+  left_join(climatology_str %>% select(doy, str_clim), by = "doy") %>%
   mutate(
     vcur_anomaly = mean_vcur - str_clim,
     anom_label = case_when(
       vcur_anomaly > 0 ~ "Anomaly (+)",
-      TRUE ~ "Anomaly (-)"
-    )
+      TRUE ~ "Anomaly (-)")
   )
+
+
+strength_with_clim <- strength_with_clim %>%
+  mutate(date = as.POSIXct(date))
+
 
 str_anom <- strength_with_clim %>% 
   select(vcur_anomaly)
 
 # Plot strength with climatology
-p <- ggplot(strength_with_clim, aes(x = date, y = mean_vcur)) +
-  geom_segment(aes(xend = date, yend = str_clim,
-                   colour = anom_label, linetype = anom_label),
-               linewidth = 1.5) +
-  geom_line(aes(y = str_clim, colour = "Climatology", linetype = "Climatology"),
-            linewidth = 1) +
-  geom_point(size = 3, shape = 21, fill = "black") +
+p <- ggplot(mapping = aes(date, str_clim)) +
+  geom_segment(data = strength_with_clim,
+               mapping = aes(xend = date, yend = str_clim,
+                             colour = anom_label, linetype = anom_label),
+               linewidth = 1.2) +
+  geom_line(data = clim_points,
+            mapping = aes(linetype = "Climatology",
+                          colour = "Climatology"),
+            linewidth = 1.1) +
+  geom_point(data = strength_with_clim, size = 2.5, shape = 21, fill = "black") +
   scale_colour_manual(breaks = c("Anomaly (+)", "Anomaly (-)", "Climatology"),
                       values = c("red", "blue", "black")) +
   scale_linetype_manual(breaks = c("Anomaly (+)", "Anomaly (-)", "Climatology"),
                         values = c("solid", "solid", "solid")) +
-  scale_x_date(date_breaks = "1 year", date_labels = "%Y") +
-  theme(axis.title = element_text(size = 14),
-        plot.title = element_text(size = 18, face = "bold")) +
+  scale_x_datetime(date_breaks = "1 year", minor_breaks = NULL,
+                   date_labels = "%Y") +
+  coord_cartesian(ylim = c(-0.3, 0.4)) +  # Adjust limits as needed
   labs(x = "Time",
-       y = "Strength ",
+       y = expression("Monthly Mean strength (m/s"^{-1}*")"),  # Update label
        colour = NULL,
        linetype = NULL,
-       title = "EAC strength (Monthly Average)")
+       title = "Current Strength Climatology (monthly average)")
 
   
 ggsave(file.path("output", "strength-with-clim.png"),
