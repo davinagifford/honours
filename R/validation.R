@@ -272,10 +272,10 @@ p_val <- cor_test$p.value
 
 
 p <- ggplot(clim_compare_long, aes(x = clim_date, y = value, color = climatology_type)) +
-  geom_line(size = 1.2) +
+  geom_line(linewidth = 1.2) +
   scale_color_manual(
     values = c("str_clim" = "blue", "eac_cci" = "red"),
-    labels = c("Current Strength Climatology", "EAC CCI Climatology")
+    labels = c("EAC CCI Climatology", "Current Strength Climatology")
   ) +
   labs(
     x = "Date",
