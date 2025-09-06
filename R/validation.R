@@ -172,7 +172,9 @@ clim_points <- clim_points %>%
 
 
 
- strength_with_clim <- current_data %>%
+
+
+strength_with_clim <- current_data %>%
   mutate(doy = yday(date)) %>%
   left_join(climatology_str %>% select(doy, str_clim), by = "doy") %>%
   mutate(
@@ -233,25 +235,43 @@ p <- ggplot() +
     linetype = NULL,
     title = "Current Strength Climatology (monthly average)"
   )
-  
+
 ggsave(file.path("output", "strength-with-clim.png"),
        plot = p, width = 1200 / 96, height = 600 / 96, dpi = 96,
        device = png)
 
+# compare monthly climatalogy values---------------
 
 
 # plot strength climatology with cci climatology
-clim_compare <- climatology_str %>%
-  select(date, str_clim) %>%
-  rename(clim_date = date) %>%
+climatology_str <- climatology_str %>%
+  mutate(clim_date = as.Date(date))
+
+climatology <- climatology %>%
+  mutate(clim_date = as.Date(sample_time))
+
+month_climatology <- climatology %>% 
+  mutate(month = month(clim_date)) %>%
+  group_by(month) %>%
+  summarise(month_clim = mean(eac_cci, na.rm = TRUE), .groups = "drop")
+
+month_clim_str <- climatology_str %>%
+  mutate(month = month(clim_date)) %>%
+  group_by(month) %>%
+  summarise(month_clim_str = mean(str_clim, na.rm = TRUE), .groups = "drop")
+
+clim_compare_short <- month_clim_str %>%
+  select(month, month_clim_str) %>%
   left_join(
-    climatology %>% select(sample_time, eac_cci) %>% rename(clim_date = sample_time),
-    by = "clim_date"
+    month_climatology,
+    by = "month"
   )
 
+
+
 # Pivot longer for easier plotting
-clim_compare_long <- clim_compare %>%
-  pivot_longer(cols = c(str_clim, eac_cci),
+clim_compare_long <- clim_compare_short %>%
+  pivot_longer(cols = c(month_clim_str, month_clim),
                names_to = "climatology_type",
                values_to = "value")
 
@@ -259,8 +279,8 @@ clim_compare_long <- clim_compare %>%
 
 
 # Run Pearson correlation
-correlation <- cor(clim_compare$eac_cci, clim_compare$str_clim, method = "pearson", use = "complete.obs")
-cor_test <- cor.test(clim_compare$eac_cci, clim_compare$str_clim, method = "pearson", use = "complete.obs")
+correlation <- cor(clim_compare_short$month_clim, clim_compare_short$month_clim_str, method = "pearson", use = "complete.obs")
+cor_test <- cor.test(clim_compare_short$month_clim, clim_compare_short$month_clim_str, method = "pearson", use = "complete.obs")
 
 # Output results
 print(paste("Pearson correlation:", round(correlation, 3)))
@@ -271,26 +291,77 @@ p_val <- cor_test$p.value
 
 
 
-p <- ggplot(clim_compare_long, aes(x = clim_date, y = value, color = climatology_type)) +
-  geom_line(linewidth = 1.2) +
-  scale_color_manual(
-    values = c("str_clim" = "blue", "eac_cci" = "red"),
-    labels = c("EAC CCI Climatology", "Current Strength Climatology")
-  ) +
+# Plot comparison
+p <- ggplot(clim_compare_long, aes(x = month, y = value, color = climatology_type)) +
+  geom_line(linewidth = 1) +
+  geom_point(size = 3, shape = 21, fill = "white") +
+  scale_x_continuous(breaks = 1:12, labels = month.abb) +
+  scale_color_manual(values = c("month_clim_str" = "blue", "month_clim" = "red"),
+                     labels = c("EAC CCI Climatology", "Current Strength Climatology")) +
   labs(
-    x = "Date",
+    x = "Month",
     y = "Climatology Value",
-    color = "Climatology",
-    title = "Current Strength vs EAC CCI Climatology",
-    subtitle = paste("Pearson correlation:", round(correlation, 3),
-                     ", p-value = ", signif(p_val, 3))
+    color = "Climatology Type",
+    title = "Comparison of Current Strength and EAC CCI Climatologies",
+    subtitle = paste("Pearson correlation:", round(correlation, 3), "| p-value:", signif(p_val, 3))
   ) +
-  theme_minimal() 
+  theme_minimal() +
+  theme(
+    axis.title = element_text(size = 14),
+    plot.title = element_text(size = 18, face = "bold"),
+    plot.subtitle = element_text(size = 12)
+  )
 
 
 ggsave(file.path("output", "climatology-comparison.png"),
        plot = p, width = 1200 / 96, height = 600 / 96, dpi = 96,
        device = png)
+
+
+# plot a scatterplot of the two
+
+ggplot(data = clim_compare_short) +
+  geom_point(mapping = aes(x = month_clim, y = month_clim_str)) +
+  geom_smooth(mapping = aes(x = month_clim, y = month_clim_str), method = "lm", se = TRUE, color = "blue", linetype = "dashed") +
+  labs(
+    x = "EAC CCI Climatology",
+    y = "Current Strength Climatology",
+    title = "Scatterplot of Current Strength vs EAC CCI Climatologies",
+    subtitle = paste("Pearson correlation:", round(correlation, 3), "| p-value:", signif(p_val, 3))
+  ) 
+
+
+# correlate the residuals
+
+# Step 1: Calculate residuals (deviations from monthly means)
+clim_compare_short <- clim_compare_short %>%
+  mutate(
+    residual_eac_cci = month_clim - mean(month_clim, na.rm = TRUE),
+    residual_strength = month_clim_str - mean(month_clim_str, na.rm = TRUE)
+  )
+
+# Step 2: Correlate the residuals
+residual_correlation <- cor(clim_compare_short$residual_eac_cci, clim_compare_short$residual_strength, method = "pearson", use = "complete.obs")
+residual_cor_test <- cor.test(clim_compare_short$residual_eac_cci, clim_compare_short$residual_strength)
+
+# Step 3: Print results
+print(paste("Residual correlation:", round(residual_correlation, 3)))
+print(residual_cor_test)
+
+
+
+# Scatterplot of residuals
+ggplot(clim_compare_short, aes(x = residual_eac_cci, y = residual_strength)) +
+  geom_point(color = "blue", size = 3) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "grey") +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "grey") +
+  labs(
+    title = "Scatterplot of Residuals",
+    x = "Residual EAC CCI",
+    y = "Residual Current Strength",
+    subtitle = paste("Pearson correlation:", round(residual_correlation, 3), "| p-value:", signif(p_val, 3))
+  ) 
+  
 
 
 # # is there a relationship between velocity and temperature?  ------------
@@ -636,7 +707,7 @@ clean_data <- na.omit(with_vel[, c("mean_vcur", "observed_eac_cci")])
 
 # Run CCF on cleaned data
 ccf_result_anom <- ccf(anom_combined_data_forcorr$vcur_anomaly, anom_combined_data_forcorr$cci_anom, lag.max = 12, plot = TRUE,
-                      main = "Cross-Correlation between the anomalies in Strength and EAC CCI")
+                       main = "Cross-Correlation between the anomalies in Strength and EAC CCI")
 
 
 
@@ -687,14 +758,14 @@ sst <- samples %>%
   select(sample_time, sst)
 colnames(sst) <- c("date", "sst")
 sst <- sst %>%
-    mutate(
-      date = as.Date(sub("T.*", "", date)),
-      year = year(date),
-      month = month(date)
-    ) %>%
-      group_by(year, month) %>%
-      summarise(sst = mean(sst, na.rm = TRUE), .groups = "drop") %>% 
-      mutate(date = as.Date(paste(year, month, "01", sep = "-"))) 
+  mutate(
+    date = as.Date(sub("T.*", "", date)),
+    year = year(date),
+    month = month(date)
+  ) %>%
+  group_by(year, month) %>%
+  summarise(sst = mean(sst, na.rm = TRUE), .groups = "drop") %>% 
+  mutate(date = as.Date(paste(year, month, "01", sep = "-"))) 
 
 
 sst_temp <- sst %>% 
@@ -836,7 +907,7 @@ clean_data_sst_str <- na.omit(sst_str[, c("mean_vcur", "sst")])
 
 # Run CCF on cleaned data
 ccf_result_sst_str <- ccf(clean_data_sst_str$mean_vcur, clean_data_sst_str$sst, lag.max = 12, plot = TRUE,
-                       main = "Cross-Correlation between the Mean strength and SST used in Index")
+                          main = "Cross-Correlation between the Mean strength and SST used in Index")
 
 
 
