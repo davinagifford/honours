@@ -45,9 +45,33 @@ raw_model_vel <- raw_model_vel %>%
   filter(longitude > 153.9) %>% 
   filter(longitude < 155.0)
 
+# load the interim data
+
+datafile2 <- "D:/HONOURS/DavinaG_2025_Honours/data/cmems_mod_glo_phy_myint_0.083deg_P1M-m_1757305199262.nc"
+if (!tolower(Sys.info()[["sysname"]]) == "sunos") {
+  tnc2 <- tidync(datafile2)
+  print(tnc2)
+}
+
+# explore variables
+variables <- hyper_vars(tnc)
+print(variables)
+
+# extract velocity data
+model_vel2 <- tnc2 %>%
+  hyper_tibble(select_var = "vo")
+print(model_vel2)
+
+raw_model_vel2 <- tnc2 %>%
+  hyper_tibble(select_var = "vo")
+
+raw_model_vel2 <- raw_model_vel2 %>% 
+  filter(depth < 1000) %>%
+  filter(longitude > 153.9) %>% 
+  filter(longitude < 155.0)
 
 
-model_vel <- model_vel %>%
+model_vel2 <- model_vel2 %>%
   filter(depth < 1000) %>%
   filter(longitude > 153.9) %>% 
   filter(longitude < 155.0) %>% 
@@ -60,8 +84,18 @@ model_vel <- model_vel %>%
   summarise(mean_vel = mean(vo, na.rm = TRUE), .groups = "drop") %>% 
   mutate(date = as.Date(paste(year, month, "01", sep = "-"))) 
 
+
+# Combine the two datasets
+
+model_vel_full <- bind_rows(model_vel, model_vel2)
+
+# convert velocity to positive strength value
+model_vel_full <- model_vel_full %>%
+  mutate(mean_vel = abs(mean_vel))
+
+
 # plot model velocity
-p <- ggplot(model_vel, aes(x = date, y = mean_vel)) +
+p <- ggplot(model_vel_full, aes(x = date, y = mean_vel)) +
   geom_line(colour = "blue", linewidth = 1) +
   geom_point(size = 3, shape = 21, fill = "blue") +
   geom_smooth(method = "loess", se = TRUE, color = "blue", linetype = "dashed") +
@@ -76,14 +110,12 @@ ggsave(file.path("output", "model_velocity.png"),
        plot = p, width = 1200 / 96, height = 600 / 96, dpi = 96,
        device = png)
 
-# convert velocity to positive strength value
-model_vel <- model_vel %>%
-  mutate(mean_vel = abs(mean_vel))
+
 
 
 # compare model velocity with observed strength (data_tbl)
 
-model_str <- model_vel %>%
+model_str <- model_vel_full %>%
   left_join(data_tbl %>% select(date, mean_vcur), by = "date")
 model_str <- model_str %>%
   drop_na()
@@ -176,102 +208,21 @@ ggplot(model_vel_index, aes(x = mean_vel, y = eac_cci)) +
 
 # Strength against climatology --------------------------------------------
 
-time_range <- current_data %>%
-  reframe(time_range = range(date)) %>%
-  pull()
-
-
-clim_points <- tibble(date = seq(time_range[1], time_range[2], by = "1 day")) %>%
-  mutate(doy = pmin(yday(date), 365)) %>%
-  left_join(climatology_str %>% select(doy, str_clim), by = "doy")
-
-clim_points <- clim_points %>% 
-  mutate(date = as.POSIXct(date))
-
-
-
-
-
-strength_with_clim <- current_data %>%
-  mutate(doy = yday(date)) %>%
-  left_join(climatology_str %>% select(doy, str_clim), by = "doy") %>%
-  mutate(
-    vcur_anomaly = mean_vcur - str_clim,
-    anom_label = case_when(
-      vcur_anomaly > 0 ~ "Anomaly (+)",
-      TRUE ~ "Anomaly (-)")
-  )
-
-
-strength_with_clim <- strength_with_clim %>%
-  mutate(date = as.POSIXct(date))
-
-
-str_anom <- strength_with_clim %>% 
-  select(vcur_anomaly)
-
-# Plot strength with climatology
-p <- ggplot() +
-  # Segments for anomalies
-  geom_segment(
-    data = strength_with_clim,
-    aes(x = date, xend = date, y = str_clim, yend = mean_vcur,
-        colour = anom_label, linetype = anom_label),
-    linewidth = 1.2
-  ) +
-  # Climatology line
-  geom_line(
-    data = clim_points,
-    aes(x = date, y = str_clim, linetype = "Climatology", colour = "Climatology"),
-    linewidth = 1.1
-  ) +
-  # Points for observed mean_vcur
-  geom_point(
-    data = strength_with_clim,
-    aes(x = date, y = mean_vcur, fill = anom_label, colour = anom_label),
-    size = 2.5, shape = 21
-  ) +
-  scale_colour_manual(
-    breaks = c("Anomaly (+)", "Anomaly (-)", "Climatology"),
-    values = c("Anomaly (+)" = "red", "Anomaly (-)" = "blue", "Climatology" = "black")
-  ) +
-  scale_fill_manual(
-    breaks = c("Anomaly (+)", "Anomaly (-)"),
-    values = c("Anomaly (+)" = "red", "Anomaly (-)" = "blue")
-  ) +
-  scale_linetype_manual(
-    breaks = c("Anomaly (+)", "Anomaly (-)", "Climatology"),
-    values = c("solid", "solid", "solid")
-  ) +
-  scale_x_datetime(date_breaks = "1 year", minor_breaks = NULL, date_labels = "%Y") +
-  #coord_cartesian(ylim = c(-0.3, 0.4)) +
-  labs(
-    x = "Time",
-    y = expression("Monthly Mean strength (m/s"^{-1}*")"),
-    colour = NULL,
-    fill = NULL,
-    linetype = NULL,
-    title = "Current Strength Climatology (monthly average)"
-  )
-
-ggsave(file.path("output", "strength-with-clim.png"),
-       plot = p, width = 1200 / 96, height = 600 / 96, dpi = 96,
-       device = png)
 
 # climatology for copernicus data-----------------
 
 # calculate a climatology
 
 
-cop_model_data <- model_vel %>%
+cop_model_data <- model_vel_full %>%
   mutate(
     doy = yday(date)
   )
 
 lm_fit_strength2 <- gam(mean_vel ~ s(doy, bs = "cc", k = 5),
-                       data = cop_model_data,
-                       method = "REML",
-                       knots = list(doy = c(0, 365)))
+                        data = cop_model_data,
+                        method = "REML",
+                        knots = list(doy = c(0, 365)))
 
 mean_time <- median(cop_model_data$date)
 time0 <- min(cop_model_data$date)
