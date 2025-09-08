@@ -38,3 +38,4 @@ catch_data <- list(samples = samples,
                    catches = catches)
 
 saveRDS(catch_data, file.path("var", "catch_data.rds"))
+

@@ -240,7 +240,7 @@ ggsave(file.path("output", "strength-with-clim.png"),
        plot = p, width = 1200 / 96, height = 600 / 96, dpi = 96,
        device = png)
 
-# compare monthly climatalogy values---------------
+# compare monthly climatology values---------------
 
 
 # plot strength climatology with cci climatology
@@ -361,7 +361,7 @@ ggplot(clim_compare_short, aes(x = residual_eac_cci, y = residual_strength)) +
     y = "Residual Current Strength",
     subtitle = paste("Pearson correlation:", round(residual_correlation, 3), "| p-value:", signif(p_val, 3))
   ) 
-  
+
 
 
 # # is there a relationship between velocity and temperature?  ------------
@@ -426,7 +426,7 @@ summary(anova_result_vt)
 
 
 
-# linear regression of EAC CCI against SOI
+# linear regression of mean strength against mean temperature
 
 # Fit a linear model
 model_vt <- lm(mean_vcur ~ mean_temp, data = vel_temp)
@@ -469,10 +469,10 @@ cat("Correlation coefficient:", round(best_corr, 3), "\n")
 
 
 
-# Create lagged SAM variable
+# Create lagged temp variable
 vel_temp$temp_lagged <- dplyr::lag(vel_temp$mean_temp, n = abs(best_lag))
 
-# If lag is negative, shift EAC_CCI instead
+# If lag is negative, shift strength instead
 if (best_lag < 0) {
   vel_temp$vel_lagged <- dplyr::lag(vel_temp$mean_vcur, n = abs(best_lag))
   lag_model_vt <- lm(vel_lagged ~ mean_temp, data = vel_temp)
@@ -1040,3 +1040,5 @@ p <- ggplot(scatter_data, aes(x = mean_vcur, y = observed_eac_cci)) +
 ggsave(file.path("output", "eac_vs_strength_scatter.png"),
        plot = p, width = 1200 / 96, height = 600 / 96, dpi = 96,
        device = png)
+
+
