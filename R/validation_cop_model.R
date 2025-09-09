@@ -1,10 +1,10 @@
-### validation.R
+### validation_cop_model.R
 ###
-### compare output of index with the original index
+### compare output of index with data from the Copernicus Marine Service
 ###
 ### Created: 2025-08-19
 ### Author: Davina Gifford
-### Last updated: 2025-08-19
+### Last updated: 2025-09-09
 ### Edited by: Davina Gifford
 
 
@@ -126,7 +126,7 @@ print(paste("Pearson correlation between model velocity and observed strength:",
 
 # compare with the index
 
-model_vel_index <- model_vel %>%
+model_vel_index <- model_vel_full %>%
   left_join(anomaly %>% select(date = trip_month, eac_cci = observed_eac_cci), by = "date")
 
 model_vel_index <- model_vel_index %>%
@@ -208,8 +208,121 @@ ggplot(model_vel_index, aes(x = mean_vel, y = eac_cci)) +
 
 # Strength against climatology --------------------------------------------
 
+# climatology for the 2011 - 2021 data
 
-# climatology for copernicus data-----------------
+cop_model_data <- model_vel %>%
+  mutate(
+    doy = yday(date)
+  )
+
+lm_fit_strength <- gam(mean_vel ~ s(doy, bs = "cc", k = 5),
+                        data = cop_model_data,
+                        method = "REML",
+                        knots = list(doy = c(0, 365)))
+
+mean_time <- median(cop_model_data$date)
+time0 <- min(cop_model_data$date)
+
+climatology_str_sub <-
+  tibble(date = floor_date(mean_time, unit = "year") + days(0:364),
+         doy = yday(date),
+         time_x = time_length(interval(time0, mean_time), unit = "day"))
+
+clim_terms_str_sub <- predict(lm_fit_strength, type = "terms", newdata = climatology_str_sub)
+
+head(clim_terms_str_sub)
+
+climatology_str_sub <-
+  climatology_str_sub %>%
+  mutate(doy_eff = clim_terms_str_sub[, "s(doy)"],
+         intercept = coef(lm_fit_strength)["(Intercept)"],
+         str_clim = doy_eff + intercept) %>%
+  select(!c(doy_eff, intercept))
+
+climatology_str_sub <- climatology_str_sub %>%
+  mutate(date = as.Date(date))
+
+
+month_clim_str_sub <- climatology_str_sub %>%
+  mutate(month = month(date)) %>%
+  group_by(month) %>%
+  summarise(month_clim_str = mean(str_clim, na.rm = TRUE), .groups = "drop")
+
+clim_compare_short_sub <- month_clim_str_sub %>%
+  select(month, month_clim_str) %>%
+  left_join(
+    month_climatology,
+    by = "month"
+  )
+
+
+
+# Pivot longer for easier plotting
+clim_compare_long_sub <- clim_compare_short_sub %>%
+  pivot_longer(cols = c(month_clim_str, month_clim),
+               names_to = "climatology_type",
+               values_to = "value")
+
+# Calculate correlation
+
+
+# Run Pearson correlation
+correlation_sub <- cor(clim_compare_short_sub$month_clim, clim_compare_short_sub$month_clim_str, method = "pearson", use = "complete.obs")
+cor_test_sub <- cor.test(clim_compare_short_sub$month_clim, clim_compare_short_sub$month_clim_str, method = "pearson", use = "complete.obs")
+
+# Output results
+print(paste("Pearson correlation:", round(correlation_sub, 3)))
+print(cor_test_sub)
+
+
+p_val_sub <- cor_test_sub$p.value
+
+
+
+# Plot comparison
+p <- ggplot(clim_compare_long_sub, aes(x = month, y = value, color = climatology_type)) +
+  geom_line(linewidth = 1) +
+  geom_point(size = 3, shape = 21, fill = "white") +
+  scale_x_continuous(breaks = 1:12, labels = month.abb) +
+  scale_color_manual(values = c("month_clim_str" = "blue", "month_clim" = "red"),
+                     labels = c("EAC CCI Climatology", "Current Strength Climatology")) +
+  labs(
+    x = "Month",
+    y = "Climatology Value",
+    color = "Climatology Type",
+    title = "Comparison of Current Strength and EAC CCI Climatologies",
+    subtitle = paste("Pearson correlation:", round(correlation_sub, 3), "| p-value:", signif(p_val_sub, 3))
+  ) +
+  theme_minimal() +
+  theme(
+    axis.title = element_text(size = 14),
+    plot.title = element_text(size = 18, face = "bold"),
+    plot.subtitle = element_text(size = 12)
+  )
+
+
+ggsave(file.path("output", "climatology-comparison_sub.png"),
+       plot = p, width = 1200 / 96, height = 600 / 96, dpi = 96,
+       device = png)
+
+
+# plot a scatterplot of the two
+
+ggplot(data = clim_compare_short_sub) +
+  geom_point(mapping = aes(x = month_clim, y = month_clim_str)) +
+  geom_smooth(mapping = aes(x = month_clim, y = month_clim_str), method = "lm", se = TRUE, color = "blue", linetype = "dashed") +
+  labs(
+    x = "EAC CCI Climatology",
+    y = "Current Strength Climatology",
+    title = "Scatterplot of Current Strength vs EAC CCI Climatologies",
+    subtitle = paste("Pearson correlation:", round(correlation_sub, 3), "| p-value:", signif(p_val_sub, 3))
+  ) 
+
+
+
+
+
+# climatology for full copernicus data-----------------
 
 # calculate a climatology
 
@@ -323,36 +436,61 @@ ggplot(data = clim_compare_short2) +
   ) 
 
 
-# correlate the residuals
 
-# Step 1: Calculate residuals (deviations from monthly means)
-clim_compare_short2 <- clim_compare_short2 %>%
-  mutate(
-    residual_eac_cci = month_clim - mean(month_clim, na.rm = TRUE),
-    residual_strength = month_clim_str - mean(month_clim_str, na.rm = TRUE)
-  )
 
-# Step 2: Correlate the residuals
-residual_correlation2 <- cor(clim_compare_short2$residual_eac_cci, clim_compare_short2$residual_strength, method = "pearson", use = "complete.obs")
-residual_cor_test2 <- cor.test(clim_compare_short2$residual_eac_cci, clim_compare_short2$residual_strength)
+# Residuals  --------------------------------------------------------------
+# linear regression of the two climatologies with the copernicus data from 2011 to 2021
 
-# Step 3: Print results
-print(paste("Residual correlation:", round(residual_correlation2, 3)))
-print(residual_cor_test2)
+# linear regression of the two climatologies
 
-p_val3 <- cor_test2$p.value
+# Fit a linear model
+cop_model_sub <- lm(month_clim ~ month_clim_str, data = clim_compare_short_sub)
 
-# Scatterplot of residuals
-ggplot(clim_compare_short2, aes(x = residual_eac_cci, y = residual_strength)) +
-  geom_point(color = "blue", size = 3) +
-  geom_hline(yintercept = 0, linetype = "dashed", color = "grey") +
-  geom_vline(xintercept = 0, linetype = "dashed", color = "grey") +
-  labs(
-    title = "Scatterplot of Residuals",
-    x = "Residual EAC CCI",
-    y = "Residual Current Strength",
-    subtitle = paste("Pearson correlation:", round(residual_correlation2, 3), "| p-value:", signif(p_val3, 3))
-  ) 
+# Summary of the model
+summary(cop_model_sub)
+
+
+
+residuals_cop_sub <- resid(cop_model_sub)
+predicted_cop_sub <- fitted(cop_model_sub)
+
+
+
+plot(clim_compare_short_sub$month_clim_str, cop_model_sub$residuals,
+     main = "Residuals vs Fitted Values",
+     xlab = "Fitted Values",
+     ylab = "Residuals",
+     pch = 19, col = "darkgreen")
+abline(h = 0, col = "red", lwd = 2)
+
+
+
+
+
+# linear regression of the two climatologies with full copernicus data
+
+# Fit a linear model
+cop_model <- lm(month_clim ~ month_clim_str, data = clim_compare_short2)
+
+# Summary of the model
+summary(cop_model)
+
+
+
+residuals_cop <- resid(cop_model)
+predicted_cop <- fitted(cop_model)
+
+
+
+plot(clim_compare_short2$month_clim_str, cop_model$residuals,
+     main = "Residuals vs Fitted Values",
+     xlab = "Fitted Values",
+     ylab = "Residuals",
+     pch = 19, col = "darkgreen")
+abline(h = 0, col = "red", lwd = 2)
+
+
+
 
 
 # Strength against climatology --------------------------------------------
@@ -438,3 +576,59 @@ p <- ggplot() +
 ggsave(file.path("output", "strength-with-clim2.png"),
        plot = p, width = 1200 / 96, height = 600 / 96, dpi = 96,
        device = png)
+
+
+
+
+# lagged effects? ---------------------------------------------------------
+
+# Cross-correlation function to explore lagged relationships
+ccf_result_cop <- ccf(clim_compare_short2$month_clim_str, clim_compare_short2$month_clim, lag.max = 12, plot = TRUE,
+                  main = "Cross-Correlation between Climatologies of EAC Strength and EAC CCI")
+
+
+
+# Extract correlation values and corresponding lags
+correlations_cop <- ccf_result_cop$acf[,1,1]
+lags_cop <- ccf_result_cop$lag[,1,1]
+
+# Find the lag with the highest absolute correlation
+max_index_cop <- which.max(abs(correlations_cop))
+best_lag_cop <- lags_cop[max_index_cop]
+best_corr_cop <- correlations_cop[max_index_cop]
+
+# Print result
+cat("Lag with highest cross-correlation:", best_lag_cop, "months\n")
+cat("Correlation coefficient:", round(best_corr_cop, 3), "\n")
+
+
+
+
+# Create lagged SOI variable
+clim_compare_short2$month_clim_str_lag <- dplyr::lag(clim_compare_short2$month_clim_str, n = abs(best_lag_cop))
+
+# If lag is negative, shift EAC_CCI instead
+if (best_lag_cop < 0) {
+  clim_compare_short2$month_clim_lag <- dplyr::lag(clim_compare_short2$month_clim, n = abs(best_lag_cop))
+  lag_model_cop <- lm(month_clim_lag ~ month_clim_str, data = clim_compare_short2)
+} else {
+  lag_model_cop <- lm(month_clim ~ month_clim_str_lag, data = clim_compare_short2)
+}
+
+# View regression summary
+summary(lag_model_cop)
+# scatterplot of the two with lag
+ggplot(clim_compare_short2, aes(x = month_clim_str_lag, y = month_clim)) +
+  geom_point(color = "blue") +
+  geom_smooth(method = "lm", se = TRUE, color = "red") +
+  labs(title = "Linear Regression of EAC CCI on Lagged Current Strength Climatology",
+       x = "Lagged Current Strength Climatology",
+       y = "EAC CCI Climatology") +
+  theme_minimal()
+
+correlation_lag_cop <- cor(clim_compare_short2$month_clim_str, clim_compare_short2$month_clim_lag, method = "pearson", use = "complete.obs")
+print(paste("Pearson correlation between lagged Current Strength Climatology and EAC CCI Climatology:", correlation_lag_cop))
+cor.test(clim_compare_short2$month_clim_str, clim_compare_short2$month_clim_lag, method = "pearson", use = "complete.obs")
+
+
+# no significant lagged effect
