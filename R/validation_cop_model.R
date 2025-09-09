@@ -438,3 +438,59 @@ p <- ggplot() +
 ggsave(file.path("output", "strength-with-clim2.png"),
        plot = p, width = 1200 / 96, height = 600 / 96, dpi = 96,
        device = png)
+
+
+
+
+# lagged effects? ---------------------------------------------------------
+
+# Cross-correlation function to explore lagged relationships
+ccf_result_cop <- ccf(clim_compare_short2$month_clim_str, clim_compare_short2$month_clim, lag.max = 12, plot = TRUE,
+                  main = "Cross-Correlation between Climatologies of EAC Strength and EAC CCI")
+
+
+
+# Extract correlation values and corresponding lags
+correlations_cop <- ccf_result_cop$acf[,1,1]
+lags_cop <- ccf_result_cop$lag[,1,1]
+
+# Find the lag with the highest absolute correlation
+max_index_cop <- which.max(abs(correlations_cop))
+best_lag_cop <- lags_cop[max_index_cop]
+best_corr_cop <- correlations_cop[max_index_cop]
+
+# Print result
+cat("Lag with highest cross-correlation:", best_lag_cop, "months\n")
+cat("Correlation coefficient:", round(best_corr_cop, 3), "\n")
+
+
+
+
+# Create lagged SOI variable
+clim_compare_short2$month_clim_str_lag <- dplyr::lag(clim_compare_short2$month_clim_str, n = abs(best_lag_cop))
+
+# If lag is negative, shift EAC_CCI instead
+if (best_lag_cop < 0) {
+  clim_compare_short2$month_clim_lag <- dplyr::lag(clim_compare_short2$month_clim, n = abs(best_lag_cop))
+  lag_model_cop <- lm(month_clim_lag ~ month_clim_str, data = clim_compare_short2)
+} else {
+  lag_model_cop <- lm(month_clim ~ month_clim_str_lag, data = clim_compare_short2)
+}
+
+# View regression summary
+summary(lag_model_cop)
+# scatterplot of the two with lag
+ggplot(clim_compare_short2, aes(x = month_clim_str_lag, y = month_clim)) +
+  geom_point(color = "blue") +
+  geom_smooth(method = "lm", se = TRUE, color = "red") +
+  labs(title = "Linear Regression of EAC CCI on Lagged Current Strength Climatology",
+       x = "Lagged Current Strength Climatology",
+       y = "EAC CCI Climatology") +
+  theme_minimal()
+
+correlation_lag_cop <- cor(clim_compare_short2$month_clim_str, clim_compare_short2$month_clim_lag, method = "pearson", use = "complete.obs")
+print(paste("Pearson correlation between lagged Current Strength Climatology and EAC CCI Climatology:", correlation_lag_cop))
+cor.test(clim_compare_short2$month_clim_str, clim_compare_short2$month_clim_lag, method = "pearson", use = "complete.obs")
+
+
+# no significant lagged effect
