@@ -4,7 +4,7 @@
 ###
 ### Created: 2025-07-04
 ### Author: Davina Gifford
-### Last updated: 2025-08-30
+### Last updated: 2025-09-09
 ### Edited by: Davina Gifford
 
 # load libraries
@@ -38,15 +38,15 @@ south_values <- monthly_avg_south$avg_eac_cci
 north_values <- monthly_avg_north$avg_eac_cci
 
 # Run Pearson correlation
-correlation <- cor(south_values, north_values, method = "pearson")
-cor_test <- cor.test(south_values, north_values, method = "pearson")
+correlation_ns <- cor(south_values, north_values, method = "pearson", use = "complete.obs")
+cor_test_ns <- cor.test(south_values, north_values, method = "pearson", use = "complete.obs")
 
 # Output results
-print(paste("Pearson correlation:", round(correlation, 3)))
-print(cor_test)
+print(paste("Pearson correlation:", round(correlation_ns, 3)))
+print(cor_test_ns)
 
 
-p_val <- cor_test$p.value
+p_val_ns <- cor_test_ns$p.value
 
 
 # Plot the correlation
@@ -85,8 +85,8 @@ ggplot(df, aes(x = South, y = North)) +
     title = "Correlation of Monthly Average EAC CCI (South vs North)",
     x = "Southern Region EAC CCI",
     y = "Northern Region EAC CCI",
-    subtitle = paste("Pearson correlation:", round(correlation, 3),
-                     ", p-value = ", signif(p_val, 3))
+    subtitle = paste("Pearson correlation:", round(correlation_ns, 3),
+                     ", p-value = ", signif(p_val_ns, 3))
   ) 
 ggsave("output/eac_cci_correlation_north_south.png", width = 8, height = 6, dpi = 300)
 
@@ -201,6 +201,12 @@ print(summary(lm_fit_south))
 
 
 
+
+
+
+
+
+# Residuals  --------------------------------------------------------------
 # linear regression of North v South
 
 # Fit a linear model
@@ -209,19 +215,18 @@ ns_model <- lm(North ~ South, data = df_clean)
 # Summary of the model
 summary(ns_model)
 
-# Plot the regression
-plot(df_clean$North, df_clean$South, main = "Regression of North EAC CCI on South EAC CCI",
-     xlab = "North EAC CCI", ylab = "South EAC CCI", pch = 19)
-abline(model, col = "blue", lwd = 2)
+
+
+residuals_ns <- resid(ns_model)
+predicted_ns <- fitted(ns_model)
 
 
 
-plot(ns_model$fitted.values, ns_model$residuals,
+plot(df_clean$South, ns_model$residuals,
      main = "Residuals vs Fitted Values",
      xlab = "Fitted Values",
      ylab = "Residuals",
      pch = 19, col = "darkgreen")
 abline(h = 0, col = "red", lwd = 2)
 
-par(mfrow = c(2, 2))  # Arrange plots in a 2x2 grid
-plot(ns_model)
+

@@ -286,8 +286,21 @@ cor_test <- cor.test(clim_compare_short$month_clim, clim_compare_short$month_cli
 print(paste("Pearson correlation:", round(correlation, 3)))
 print(cor_test)
 
+# run 
+
 
 p_val <- cor_test$p.value
+
+# run Kendall correlation
+correlation_k <- cor(clim_compare_short$month_clim, clim_compare_short$month_clim_str, method = "kendall", use = "complete.obs")
+cor_test_k <- cor.test(clim_compare_short$month_clim, clim_compare_short$month_clim_str, method = "kendall", use = "complete.obs")
+
+# Output results
+print(paste("Kendall correlation:", round(correlation_k, 3)))
+print(cor_test_k)
+
+
+p_val_k <- cor_test_k$p.value
 
 
 
@@ -303,7 +316,7 @@ p <- ggplot(clim_compare_long, aes(x = month, y = value, color = climatology_typ
     y = "Climatology Value",
     color = "Climatology Type",
     title = "Comparison of Current Strength and EAC CCI Climatologies",
-    subtitle = paste("Pearson correlation:", round(correlation, 3), "| p-value:", signif(p_val, 3))
+    subtitle = paste("Kendall correlation:", round(correlation_k, 3), "| p-value:", signif(p_val_k, 3))
   ) +
   theme_minimal() +
   theme(
@@ -313,7 +326,7 @@ p <- ggplot(clim_compare_long, aes(x = month, y = value, color = climatology_typ
   )
 
 
-ggsave(file.path("output", "climatology-comparison.png"),
+ggsave(file.path("output", "climatology-comparison_kendall.png"),
        plot = p, width = 1200 / 96, height = 600 / 96, dpi = 96,
        device = png)
 
@@ -333,34 +346,26 @@ ggplot(data = clim_compare_short) +
 
 # correlate the residuals
 
-# Step 1: Calculate residuals (deviations from monthly means)
-clim_compare_short <- clim_compare_short %>%
-  mutate(
-    residual_eac_cci = month_clim - mean(month_clim, na.rm = TRUE),
-    residual_strength = month_clim_str - mean(month_clim_str, na.rm = TRUE)
-  )
+# Fit a linear model
+str_model <- lm(month_clim ~ month_clim_str, data = clim_compare_short)
 
-# Step 2: Correlate the residuals
-residual_correlation <- cor(clim_compare_short$residual_eac_cci, clim_compare_short$residual_strength, method = "pearson", use = "complete.obs")
-residual_cor_test <- cor.test(clim_compare_short$residual_eac_cci, clim_compare_short$residual_strength)
-
-# Step 3: Print results
-print(paste("Residual correlation:", round(residual_correlation, 3)))
-print(residual_cor_test)
+# Summary of the model
+summary(str_model)
 
 
 
-# Scatterplot of residuals
-ggplot(clim_compare_short, aes(x = residual_eac_cci, y = residual_strength)) +
-  geom_point(color = "blue", size = 3) +
-  geom_hline(yintercept = 0, linetype = "dashed", color = "grey") +
-  geom_vline(xintercept = 0, linetype = "dashed", color = "grey") +
-  labs(
-    title = "Scatterplot of Residuals",
-    x = "Residual EAC CCI",
-    y = "Residual Current Strength",
-    subtitle = paste("Pearson correlation:", round(residual_correlation, 3), "| p-value:", signif(p_val, 3))
-  ) 
+residuals_str <- resid(str_model)
+predicted_str <- fitted(str_model)
+
+
+
+plot(clim_compare_short$month_clim_str, str_model$residuals,
+     main = "Residuals vs Fitted Values",
+     xlab = "Fitted Values",
+     ylab = "Residuals",
+     pch = 19, col = "darkgreen")
+abline(h = 0, col = "red", lwd = 2)
+
 
 
 
@@ -1007,6 +1012,14 @@ cor_test <- cor.test(all_data$mean_vcur, all_data$north_index, method = "pearson
 # Output results
 print(paste("Pearson correlation:", round(correlation, 3)))
 print(cor_test)
+
+# Run kendall correlation
+correlation_k <- cor(all_data$mean_vcur, all_data$north_index, method = "kendall", use = "pairwise.complete.obs")
+cor_test_k <- cor.test(all_data$mean_vcur, all_data$north_index, method = "kendall", use = "pairwise.complete.obs")
+
+# Output results
+print(paste("Kendall correlation:", round(correlation_k, 3)))
+print(cor_test_k)
 
 
 
