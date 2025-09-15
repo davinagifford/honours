@@ -36,7 +36,7 @@ dim_lengths <- vapply(vo_info$dim, function(d) d$len, integer(1))
 
 # ---------- selection ----------
 lon_min <- 153; lon_max <- 155
-z_max <- 100 
+z_max <- 60 # values less than 60 m depth  
 southward_positive <- TRUE
 
 idx_lon <- which(lon >= lon_min & lon <= lon_max)
@@ -587,6 +587,7 @@ ggsave(file.path("output", "climatology-comparison_trans_27.png"),
        device = png)
 
 
+
 # plot a scatterplot of the two
 
 ggplot(data = clim_compare_short_trans_27) +
@@ -699,6 +700,9 @@ p <- ggplot(clim_compare_long_trans_32, aes(x = month, y = value, color = climat
 ggsave(file.path("output", "climatology-comparison_trans_32.png"),
        plot = p, width = 1200 / 96, height = 600 / 96, dpi = 96,
        device = png)
+
+
+
 
 
 # plot a scatterplot of the two
