@@ -4,13 +4,14 @@
 ###
 ### Created: 2025-07-04
 ### Author: Davina Gifford
-### Last updated: 2025-09-09
+### Last updated: 2025-09-16
 ### Edited by: Davina Gifford
 
 # load libraries
 library(dplyr)
 library(lubridate)
 library(ggplot2)
+library(tidyverse)
 
 #Calculate monthly averages for south
 monthly_avg_south <- month_data_south %>%
@@ -230,3 +231,277 @@ plot(df_clean$South, ns_model$residuals,
 abline(h = 0, col = "red", lwd = 2)
 
 
+
+# scatterplot of north v south -----------
+
+# Pivot longer for easier plotting
+
+
+df_long <- df %>%
+  pivot_longer(cols = c(South, North),
+               names_to = "Region",
+               values_to = "value")
+
+df_long$Month <- factor(df_long$Month, levels = month.abb)  # if Month is abbreviated
+
+df_long <- df_long %>%
+  arrange(Region, Month)
+
+
+df_long$Month_num <- match(df_long$Month, month.abb)
+
+
+
+p <- ggplot(df_long, aes(x = Month_num, y = value, color = Region)) +
+  geom_line(linewidth = 1) +
+  geom_point(size = 3, shape = 21, fill = "white") +
+  scale_x_continuous(breaks = 1:12, labels = month.abb) +
+  scale_color_manual(values = c("North" = "blue", "South" = "red"),
+                     labels = c("North", "South")) +
+  labs(
+    x = "Month",
+    y = "Region value",
+    color = "Region",
+    title = "Comparison of North and South EAC CCI values",
+    subtitle = paste("Pearson correlation:", round(correlation_ns, 3), "| p-value:", signif(p_val_ns, 3))
+  ) +
+  theme_minimal() +
+  theme(
+    axis.title = element_text(size = 14),
+    plot.title = element_text(size = 18, face = "bold"),
+    plot.subtitle = element_text(size = 12),
+  )
+
+ggsave(file.path("output", "north-south-compare.png"),
+       plot = p, width = 1200 / 96, height = 600 / 96, dpi = 96,
+       device = png)
+
+
+# plot a scatterplot of the two
+
+ggplot(data = clim_compare_short) +
+  geom_point(mapping = aes(x = month_clim, y = month_clim_str)) +
+  geom_smooth(mapping = aes(x = month_clim, y = month_clim_str), method = "lm", se = TRUE, color = "blue", linetype = "dashed") +
+  labs(
+    x = "EAC CCI Climatology",
+    y = "Current Strength Climatology",
+    title = "Scatterplot of Current Strength vs EAC CCI Climatologies",
+    subtitle = paste("Pearson correlation:", round(correlation, 3), "| p-value:", signif(p_val, 3))
+  ) 
+
+
+# correlate the residuals
+
+# Fit a linear model
+str_model <- lm(month_clim ~ month_clim_str, data = clim_compare_short)
+
+# Summary of the model
+summary(str_model)
+
+
+
+residuals_str <- resid(str_model)
+predicted_str <- fitted(str_model)
+
+
+
+plot(clim_compare_short$month_clim_str, str_model$residuals,
+     main = "Residuals vs Fitted Values",
+     xlab = "Fitted Values",
+     ylab = "Residuals",
+     pch = 19, col = "darkgreen")
+abline(h = 0, col = "red", lwd = 2)
+
+
+
+
+# correlate the raw values not monthly averages --------
+
+
+north_south_data <- month_data_north %>% 
+  rename(north_cci = eac_cci) %>% 
+  left_join(month_data_south, by = "trip_month") %>% 
+  rename(south_cci = eac_cci)
+
+north_south_data$trip_month <- as.Date(north_south_data$trip_month)
+  
+
+
+correlation_raw <- cor(north_south_data$north_cci, north_south_data$south_cci, method = "pearson", use = "complete.obs")
+cor_test_raw <- cor.test(north_south_data$north_cci, north_south_data$south_cci, method = "pearson", use = "complete.obs")
+
+# Output results
+print(paste("Pearson correlation (raw):", round(correlation_raw, 3)))
+print(cor_test_raw)
+
+# plot the two 
+
+
+
+
+
+p <- ggplot(north_south_data, aes(x = trip_month)) +
+  geom_line(aes(y = north_cci), colour = "black", linewidth = 1) +
+  geom_point(aes(y = north_cci), size = 3, shape = 21, fill = "black") +
+  geom_smooth(aes(y = north_cci), method = "loess", se = TRUE, color = "black", linetype = "dashed") +
+  geom_line(aes(y = south_cci), colour = "blue", linewidth = 1) +
+  geom_point(aes(y = south_cci), size = 3, shape = 21, fill = "blue") +
+  geom_smooth(aes(y = south_cci), method = "loess", se = TRUE, color = "blue", linetype = "dashed") +
+  scale_x_date(date_breaks = "1 year", date_labels = "%Y") +
+  scale_y_continuous(name = "EAC copepod composition index (North)",
+                     sec.axis = sec_axis(~ .,  name = "EAC copepod composition index (South)")) +
+  theme(
+    axis.title.y = element_text(size = 14, color = "black"),
+    axis.title.y.right = element_text(size = 14, color = "blue"),
+    plot.title = element_text(size = 18, face = "bold")
+  ) +
+  labs(
+    x = "Time",
+    title = "North and South EAC copepod composition index  ")
+
+
+
+ggsave(file.path("output", "eac_cci_NS_combined.png"),
+       plot = p, width = 1200 / 96, height = 600 / 96, dpi = 96,
+       device = png)
+
+# do anova  -----
+
+anova_result_ns <- aov(north_cci ~ south_cci, data = north_south_data)
+
+summary(anova_result_ns)
+
+# Residuals vs Fitted
+plot(anova_result_ns$fitted.values, anova_result_ns$residuals,
+     xlab = "Fitted Values", ylab = "Residuals",
+     main = "Residuals vs Fitted Values",
+     pch = 20, col = "blue")
+abline(h = 0, col = "red", lty = 2)
+# Q-Q Plot
+
+qqnorm(anova_result_ns$residuals, main = "Q-Q Plot of Residuals")
+qqline(anova_result_ns$residuals, col = "red", lty = 2)
+
+
+
+# compare north south anomalies -----------------
+
+north_anomaly <- month_data_t_n %>% 
+  select(trip_month, eac_cci_clim) %>% 
+  rename(north_anom = eac_cci_clim)
+
+north_anomaly <- north_anomaly %>% 
+  mutate(north_anom = north_anom - month_data_t_n$eac_cci)
+
+south_anomaly <- month_data_t_s %>% 
+  select(trip_month, eac_cci_clim) %>% 
+  rename(south_anom = eac_cci_clim)
+
+south_anomaly <- south_anomaly %>% 
+  mutate(south_anom = south_anom - month_data_t_s$eac_cci)
+
+ns_anom_combined <- north_anomaly %>% 
+  left_join(south_anomaly, by = "trip_month")
+
+ns_anom_combined$trip_month <- as.Date(ns_anom_combined$trip_month)
+
+
+# pearson correlation between the two anomalies
+corr_anom_ns <- cor(ns_anom_combined$north_anom, ns_anom_combined$south_anom, method = "pearson", use = "complete.obs")
+corr_test_anom_ns <- cor.test(ns_anom_combined$north_anom, ns_anom_combined$south_anom, method = "pearson", use = "complete.obs")
+
+
+# Output results
+print(paste("Pearson correlation:", round(corr_anom_ns, 3)))
+print(corr_test_anom_ns)
+
+
+p_val_anom_ns <- corr_test_anom_ns$p.value
+
+# kendall correlation between the two anomalies
+corr_anom_ns_k <- cor(ns_anom_combined$north_anom, ns_anom_combined$south_anom, method = "kendall", use = "complete.obs")
+corr_test_anom_ns_k <- cor.test(ns_anom_combined$north_anom, ns_anom_combined$south_anom, method = "kendall", use = "complete.obs")
+
+
+# Output results
+print(paste("kendall correlation:", round(corr_anom_ns_k, 3)))
+print(corr_test_anom_ns_k)
+
+
+p_val_anom_ns_k <- corr_test_anom_ns_k$p.value
+
+
+
+# plot the two anomalies
+
+p <- ggplot(ns_anom_combined, aes(x = trip_month)) +
+  geom_line(aes(y = north_anom), colour = "black", linewidth = 1) +
+  geom_point(aes(y = north_anom), size = 3, shape = 21, fill = "black") +
+  geom_smooth(aes(y = north_anom), method = "loess", se = TRUE, color = "black", linetype = "dashed") +
+  geom_line(aes(y = south_anom), colour = "blue", linewidth = 1) +
+  geom_point(aes(y = south_anom), size = 3, shape = 21, fill = "blue") +
+  geom_smooth(aes(y = south_anom), method = "loess", se = TRUE, color = "blue", linetype = "dashed") +
+  scale_x_date(date_breaks = "1 year", date_labels = "%Y") +
+  scale_y_continuous(name = "EAC copepod composition index - North",
+                     sec.axis = sec_axis(~ .,  name = "EAC copepod composition index - South")) +
+  theme(
+    axis.title.y = element_text(size = 14, color = "black"),
+    axis.title.y.right = element_text(size = 14, color = "blue"),
+    plot.title = element_text(size = 18, face = "bold")
+  ) +
+  labs(
+    x = "Time",
+    title = "North and South Anomalies of EAC copepod composition index ")
+
+
+
+ggsave(file.path("output", "eac_cci_ns_anom_combined.png"),
+       plot = p, width = 1200 / 96, height = 600 / 96, dpi = 96,
+       device = png)
+# scatterplot of the two anomalies
+p <- ggplot(data = ns_anom_combined) +
+  geom_point(mapping = aes(x = north_anom, y = south_anom)) +
+  geom_smooth(mapping = aes(x = north_anom, y = south_anom), method = "lm", se = TRUE, color = "blue", linetype = "dashed") +
+  labs(
+    x = "North Anomaly",
+    y = "South Anomaly",
+    title = "Scatterplot of North vs South EAC CCI Anomalies",
+    subtitle = paste("Pearson correlation:", round(corr_anom_ns, 3), "| p-value:", signif(p_val_anom_ns, 3))
+  )
+ggsave(file.path("output", "eac_cci_ns_anom_scatter.png"),
+       plot = p, width = 1200 / 96, height = 600 / 96, dpi = 96,
+       device = png)
+
+
+# plot residuals
+
+ns_anom_model <- lm(south_anom ~ north_anom, data = ns_anom_combined)
+
+summary(ns_anom_model)
+
+residuals_ns_anom <- resid(ns_anom_model)
+predicted_ns_anom <- fitted(ns_anom_model)
+
+plot(ns_anom_combined$north_anom, ns_anom_model$residuals,
+     main = "Residuals vs Fitted Values",
+     xlab = "Fitted Values",
+     ylab = "Residuals",
+     pch = 19, col = "darkgreen")
+abline(h = 0, col = "red", lwd = 2)
+
+
+# anova of anomaly values
+anova_result_ns_anom <- aov(north_anom ~ south_anom, data = ns_anom_combined)
+
+summary(anova_result_ns_anom)
+
+# Residuals vs Fitted
+plot(anova_result_ns_anom$fitted.values, anova_result_ns_anom$residuals,
+     xlab = "Fitted Values", ylab = "Residuals",
+     main = "Residuals vs Fitted Values",
+     pch = 20, col = "blue")
+abline(h = 0, col = "red", lty = 2)
+# Q-Q Plot
+
+qqnorm(anova_result_ns_anom$residuals, main = "Q-Q Plot of Residuals")
+qqline(anova_result_ns_anom$residuals, col = "red", lty = 2)

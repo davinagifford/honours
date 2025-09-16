@@ -290,7 +290,6 @@ anova_data <- na.omit(anova_data)
 anova_result <- aov(eac_cci_clim ~ strength_anom + month + year, data = anova_data)
 summary(anova_result)
 
-# Assuming your ANOVA model is stored in 'anova_result'
 # Residuals vs Fitted
 plot(anova_result$fitted.values, anova_result$residuals,
      xlab = "Fitted Values", ylab = "Residuals",
