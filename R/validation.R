@@ -502,7 +502,6 @@ with_vel <- anomaly %>%
   mutate(date = as.Date(trip_month)) %>%
   full_join(data_tbl, by = "date")
 
-
 velocity_scale <- max(with_vel$anomaly, na.rm = TRUE) / max(abs(with_vel$mean_vcur), na.rm = TRUE)
 
 with_vel <- with_vel %>%
@@ -512,12 +511,14 @@ p <- ggplot(with_vel, aes(x = date)) +
   geom_line(aes(y = anomaly), colour = "black", linewidth = 1) +
   geom_point(aes(y = anomaly), size = 3, shape = 21, fill = "black") +
   geom_smooth(aes(y = anomaly), method = "loess", se = TRUE, color = "black", linetype = "dashed") +
-  geom_line(aes(y = mean_vcur), colour = "blue", linewidth = 1) +
-  geom_point(aes(y = mean_vcur), size = 3, shape = 21, fill = "blue") +
-  geom_smooth(aes(y = mean_vcur), method = "loess", se = TRUE, color = "blue", linetype = "dashed") +
+  geom_line(aes(y = vel_scale), colour = "blue", linewidth = 1) +
+  geom_point(aes(y = vel_scale), size = 3, shape = 21, fill = "blue") +
+  geom_smooth(aes(y = vel_scale), method = "loess", se = TRUE, color = "blue", linetype = "dashed") +
   scale_x_date(date_breaks = "1 year", date_labels = "%Y") +
-  scale_y_continuous(name = "EAC copepod composition index - anomaly",
-                     sec.axis = sec_axis(~ .,  name = "Monthy mean strength")) +
+  scale_y_continuous(
+    name = "EAC copepod composition index - anomaly",
+    sec.axis = sec_axis(~ . / velocity_scale, name = "Monthly mean strength")
+  ) +
   theme(
     axis.title.y = element_text(size = 14, color = "black"),
     axis.title.y.right = element_text(size = 14, color = "blue"),
@@ -525,13 +526,13 @@ p <- ggplot(with_vel, aes(x = date)) +
   ) +
   labs(
     x = "Time",
-    title = "EAC copepod composition index & Monthly mean strength ")
-
-
+    title = "EAC copepod composition index & Monthly mean strength"
+  )
 
 ggsave(file.path("output", "eac_cci_vel_combined.png"),
        plot = p, width = 1200 / 96, height = 600 / 96, dpi = 96,
-       device = png)
+       device = "png")
+
 
 # test similarity between cci and strength values
 
