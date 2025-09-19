@@ -11,12 +11,18 @@ resources:
 
 To understand whether there was a relationship between the output of the Index and the calculated mean monthly strength values, multiple linear regression models were calculated.
 
-## Full model
-
 ```{r}
 # load libraries
 
 library(tidyverse)
+library(marginaleffects)
+library(gglm)
+```
+
+## Full model
+
+```{r}
+
 
 # data wrangling
 
@@ -42,10 +48,16 @@ comb_raw_data_long <- comb_raw_data %>%
                names_to = "data_source",
                values_to = "value")
 
-
+head(comb_raw_data_long)
 ```
 
 data_source is whether the values come from the output of the EAC CCI Index calculation or are the Mean monthly strength values from the Copernicus Global Ocean Physics Reanalysis <https://data.marine.copernicus.eu/product/GLOBAL_MULTIYEAR_PHY_001_030/description>.
+
+```{r}
+ggplot(data = comb_raw_data_long, aes(x = data_source, y = value)) +
+  geom_jitter(data = comb_raw_data_long,
+             aes(x = data_source, y = value), width = 0.2, alpha = 0.3)
+```
 
 ```{r}
 
@@ -55,25 +67,39 @@ raw_data_model <- lm(value ~ data_source + month + month:data_source, data = com
 
 summary(raw_data_model)
 
-# drop the interaction term
-raw_data_model2 <- lm(value ~ data_source + month, data = comb_raw_data_long)
 
-summary(raw_data_model2)
+
+gglm(raw_data_model)
+
+
+plot_predictions(raw_data_model, condition = 'data_source') +
+  geom_jitter(data = comb_raw_data_long,
+             aes(x = data_source, y = value), width = 0.2, alpha = 0.3)
+
+
 ```
 
 A multiple linear regression was conducted to examine the effects of the data source, month, and their interaction on the resulting values.
 
 The overall model was statistically significant, *F*(3, 112) = 19.32, *p* \< 0.001, explaining approximately 34.1% of the variance in the dependent variable (*R²* = 0.341, adjusted *R²* = 0.323).
 
--   The intercept was statistically significant (*β* = 0.0824, *t* = 2.45, *p* = 0.016).
-
--   The main effect of data source was not significant (*β* = 0.0352, *t* = 0.738, *p* = 0.462).
-
--   The main effect of month was also not significant (*β* = 0.0062, *t* = 1.45, *p* = 0.150).
-
--   However, the interaction between data source and month was statistically significant (*β* = -0.0214, *t* = -3.52, *p* \< .001), indicating that the effect of month on value differed depending on the data source.
+The interaction between data source and month was statistically significant (*β* = -0.0214, *t* = -3.52, *p* \< .001), indicating that the effect of month on value differed depending on the data source.
 
 Residuals were symmetrically distributed with a standard error of 0.0981, ranging from -0.223 to 0.303, suggesting that the model does not under or overfit.
+
+```{r}
+# drop the interaction term
+raw_data_model2 <- lm(value ~ data_source + month, data = comb_raw_data_long)
+
+summary(raw_data_model2)
+
+gglm(raw_data_model2)
+
+plot_predictions(raw_data_model2, condition = 'data_source') +
+  geom_jitter(data = comb_raw_data_long,
+             aes(x = data_source, y = value), width = 0.2, alpha = 0.3)
+
+```
 
 A second regression was conducted to remove the effect of the interaction between data source and month.
 
@@ -90,7 +116,7 @@ Residuals were symmetrically distributed with a standard error of 0.1029, rangin
 ```{r}
 # compare the two models 
 
-anova(raw_data_model, raw_data_model2)
+anova(raw_data_model, raw_data_model2, test = "F")
 ```
 
 To assess whether the interaction between month and the source of data significantly improves the model fit, an analysis of variance (ANOVA) was conducted comparing two nested models:
@@ -99,7 +125,7 @@ To assess whether the interaction between month and the source of data significa
 
 -   **Model 2**: included only the main effects of `data_source` and `month`.
 
-The comparison revealed that Model 1 provided a significantly better fit to the data than Model 2, *F*(1, 112) = 12.42, *p* \< .001. This indicates that the effect of month on the outcome variable value differs depending on the data source, and that including the interaction term significantly improves the model's explanatory power.
+The comparison revealed that Model 1 provided a significantly better fit to the data than Model 2, *F*(1, 112) = 12.42, *p* \< .001. This indicates that the seasonal cycles were different, and that including the interaction term significantly improves the model's explanatory power.
 
 ## Comparing the anomalies
 
@@ -113,10 +139,19 @@ library(tidyverse)
 # Extract data sources
 combined_anomaly_data <- readRDS(file.path("var", "combined_anomalies.rds"))
 
+head(combined_anomaly_data)
+
 # model to compare the anomalies of the Index and the Strength values
-anomaly_model <- lm(eac_cci_clim ~ strength_anom, data = combined_anomaly_data)
+anomaly_model <- lm(index_anom ~ strength_anom, data = combined_anomaly_data)
 
 summary(anomaly_model)
+
+gglm(anomaly_model)
+
+plot_predictions(anomaly_model, condition = 'strength_anom') +
+  geom_point(data = combined_anomaly_data,
+             aes(x = strength_anom, y = index_anom))
+
 
 ```
 

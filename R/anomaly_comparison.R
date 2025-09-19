@@ -304,4 +304,13 @@ qqline(anova_result$residuals, col = "red")
 
 # save to rds
 
-saveRDS(combined_anomalies2, file = file.path("var", "combined_anomalies.rds"))
+# Merge the two datasets on trip_month
+combined_anomalies_data <- index_anomaly_2 %>%
+  left_join(strength_anomaly2, by = "trip_month") %>% 
+  rename(index_anom = eac_cci_clim)
+
+# remove nas from combined data
+combined_anomalies_data <- combined_anomalies_data %>%
+  filter(!is.na(index_anom) & !is.na(strength_anom))
+
+saveRDS(combined_anomalies_data, file = file.path("var", "combined_anomalies.rds"))
