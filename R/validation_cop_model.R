@@ -549,3 +549,22 @@ ggsave(file.path("output", "strength-with-clim_full_50.png"),
        device = png)
 
 
+# data wrangling
+
+# data wrangling
+
+raw_strength_data <- model_vel_full_50 %>% 
+  select(date, mean_vel)
+
+raw_index_data <- month_data_t %>% 
+  select(trip_month, eac_cci)
+
+raw_index_data <- raw_index_data %>% 
+  rename(date = trip_month)
+
+raw_index_data <- raw_index_data %>% 
+  mutate(
+    date = as.Date(sub("T.*", "", trip_month)),
+    year = year(date),
+    month = month(date)
+  ) 

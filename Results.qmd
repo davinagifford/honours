@@ -1,0 +1,122 @@
+---
+title: "anomaly"
+format: html
+editor: visual
+---
+
+## Results
+
+To understand whether there was a relationship between the output of the Index and the calculated mean monthly strength values, multiple linear regression models were calculated.
+
+## Full model
+
+```{r}
+# load libraries
+
+library(tidyverse)
+
+# data wrangling
+
+# combine raw data values
+
+comb_raw_data <- raw_strength_data %>% 
+  inner_join(raw_index_data, by = "date") %>%  # inner join to remove NA values
+  mutate(
+    month = month(date) # extract month value
+  ) %>% 
+  rename(cop_strength = mean_vel)
+
+# pivot longer for model
+
+comb_raw_data_long <- comb_raw_data %>% 
+  pivot_longer(cols = c(cop_strength, eac_cci),
+               names_to = "data_source",
+               values_to = "value")
+
+
+```
+
+data_source is whether the values come from the output of the EAC CCI Index calculation or are the Mean monthly strength values from the Copernicus Global Ocean Physics Reanalysis <https://data.marine.copernicus.eu/product/GLOBAL_MULTIYEAR_PHY_001_030/description>.
+
+```{r}
+
+# create the model
+
+raw_data_model <- lm(value ~ data_source + month + month:data_source, data = comb_raw_data_long)
+
+summary(raw_data_model)
+
+# drop the interaction term
+raw_data_model2 <- lm(value ~ data_source + month, data = comb_raw_data_long)
+
+summary(raw_data_model2)
+```
+
+A multiple linear regression was conducted to examine the effects of the data source, month, and their interaction on the resulting values.
+
+The overall model was statistically significant, *F*(3, 112) = 19.32, *p* \< 0.001, explaining approximately 34.1% of the variance in the dependent variable (*R²* = 0.341, adjusted *R²* = 0.323).
+
+-   The intercept was statistically significant (*β* = 0.0824, *t* = 2.45, *p* = 0.016).
+
+-   The main effect of data source was not significant (*β* = 0.0352, *t* = 0.738, *p* = 0.462).
+
+-   The main effect of month was also not significant (*β* = 0.0062, *t* = 1.45, *p* = 0.150).
+
+-   However, the interaction between data source and month was statistically significant (*β* = -0.0214, *t* = -3.52, *p* \< .001), indicating that the effect of month on value differed depending on the data source.
+
+Residuals were symmetrically distributed with a standard error of 0.0981, ranging from -0.223 to 0.303, suggesting that the model does not under or overfit.
+
+A second regression was conducted to remove the effect of the interaction between data source and month.
+
+This model was also statistically significant, F(2, 113) = 20.68, p \< 0.001, explaining approximately 26.8 % variance in the dependent variable (*R²* = 0.268, adjusted *R²* = 0.255).
+
+-   The intercept was statistically significant (*β* = 0.1599, *t* = 5.980, *p* \< 0.001).
+
+-   The main effect of data source was statistically significant (*β* = 0.1199, *t* = -6.277, *p* \< 0.001).
+
+-   The main effect of month was not significant (*β* = 0.0044, *t* = -1.403, *p* = 0.163).
+
+Residuals were symmetrically distributed with a standard error of 0.1029, ranging from -0.211 to 0.280.
+
+```{r}
+# compare the two models 
+
+anova(raw_data_model, raw_data_model2)
+```
+
+To assess whether the interaction between month and the source of data significantly improves the model fit, an analysis of variance (ANOVA) was conducted comparing two nested models:
+
+-   **Model 1**: included main effects of `data_source` and `month`, as well as their interaction (`month:data_source`).
+
+-   **Model 2**: included only the main effects of `data_source` and `month`.
+
+The comparison revealed that Model 1 provided a significantly better fit to the data than Model 2, *F*(1, 112) = 12.42, *p* \< .001. This indicates that the effect of month on the outcome variable value differs depending on the data source, and that including the interaction term significantly improves the model's explanatory power.
+
+## Comparing the anomalies
+
+As the climatologies had a significant correlation between them, a linear regression was calculated between the anomalies to model the relationship.
+
+```{r}
+# load libraries
+
+library(tidyverse)
+
+
+# model to compare the anomalies of the Index and the Strength values
+anomaly_model <- lm(eac_cci_clim ~ strength_anom, data = combined_anomalies2)
+
+summary(anomaly_model)
+
+```
+
+The combined_anomalies2 tibble has 2 key variables:
+
+1.  eac_cci_clim : The Index anomalies
+
+2.  strength_anom : The strength anomalies calculated from the Copernicus data
+
+The model was not statistically significant, *F*(1, 56) = 0.615, *p* = 0.436, and explained only a small proportion of the variance in the Index anomalies (*R²* = 0.011, adjusted *R²* = -0.007).
+
+The slope coefficient for strength anomaly was not statistically significant (*β* = 0.1005, *t* = 0.784, *p* = 0.436), indicating that changes in strength anomaly did not significantly predict changes in EAC CCI climate anomaly.
+
+The residuals were approximately symmetrically distributed, with a standard error of 0.0691, and ranged from -0.100 to 0.108.
