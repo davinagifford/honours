@@ -300,3 +300,8 @@ abline(h = 0, col = "red", lty = 2)
 # QQ Plot for normality of residuals
 qqnorm(anova_result$residuals, main = "QQ Plot of Residuals")
 qqline(anova_result$residuals, col = "red")
+
+
+# save to rds
+
+saveRDS(combined_anomalies2, file = file.path("var", "combined_anomalies.rds"))

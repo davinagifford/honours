@@ -1,7 +1,10 @@
 ---
-title: "anomaly"
+title: "Anomaly comparisons"
 format: html
 editor: visual
+resources:
+  - var/raw_data_list.rds
+  - var/combined_anomalies.rds
 ---
 
 ## Results
@@ -16,6 +19,12 @@ To understand whether there was a relationship between the output of the Index a
 library(tidyverse)
 
 # data wrangling
+
+# Extract data sources
+raw_data <- readRDS(file.path("var", "raw_data_list.rds"))
+
+raw_strength_data <- raw_data$raw_strength_data
+raw_index_data <- raw_data$raw_index_data
 
 # combine raw data values
 
@@ -101,9 +110,11 @@ As the climatologies had a significant correlation between them, a linear regres
 
 library(tidyverse)
 
+# Extract data sources
+combined_anomaly_data <- readRDS(file.path("var", "combined_anomalies.rds"))
 
 # model to compare the anomalies of the Index and the Strength values
-anomaly_model <- lm(eac_cci_clim ~ strength_anom, data = combined_anomalies2)
+anomaly_model <- lm(eac_cci_clim ~ strength_anom, data = combined_anomaly_data)
 
 summary(anomaly_model)
 
