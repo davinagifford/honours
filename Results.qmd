@@ -1,5 +1,5 @@
 ---
-title: "Anomaly comparisons"
+title: "Index comparisons"
 format: html
 editor: visual
 resources:
@@ -130,6 +130,8 @@ The comparison revealed that Model 1 provided a significantly better fit to the 
 ## Comparing the anomalies
 
 As the climatologies had a significant correlation between them, a linear regression was calculated between the anomalies to model the relationship.
+
+Anomalies were calculated by subtracting the climatology value from the strength/index value, for example, `strength_anom = mean_str - str_clim`.
 
 ```{r}
 # load libraries
