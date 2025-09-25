@@ -264,18 +264,6 @@ ggsave(file.path("output", "climatology-comparison_full_50.png"),
        device = png)
 
 
-# plot a scatterplot of the two
-
-ggplot(data = clim_compare_short_full_50) +
-  geom_point(mapping = aes(x = month_clim, y = month_clim_str)) +
-  geom_smooth(mapping = aes(x = month_clim, y = month_clim_str), method = "lm", se = TRUE, color = "blue", linetype = "dashed") +
-  labs(
-    x = "EAC CCI Climatology",
-    y = "Current Strength Climatology",
-    title = "Scatterplot of Current Strength vs EAC CCI Climatologies",
-    subtitle = paste("Pearson correlation:", round(correlation_full_50, 3), "| p-value:", signif(p_val_full_50, 3))
-  ) 
-
 
 
 
@@ -420,7 +408,10 @@ ggsave(file.path("output", "strength-with-clim_full_50.png"),
        device = png)
 
 
-# data wrangling
+
+
+
+# data wrangling --------------
 
 # data wrangling
 
@@ -435,7 +426,7 @@ raw_index_data <- raw_index_data %>%
 
 raw_index_data <- raw_index_data %>% 
   mutate(
-    date = as.Date(sub("T.*", "", trip_month)),
+    date = as.Date(sub("T.*", "", date)),
     year = year(date),
     month = month(date)
   ) 

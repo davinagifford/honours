@@ -18,17 +18,17 @@ library(gglm)
 
 ### Climatology comparison
 
-The climatologies of the Index and the Mean Monthly Strength had a significant correlation between them (Pearson correlation = 0.628, p = 0.0286).
+The climatologies of the Index and the Mean Monthly Strength did not have a significant correlation between them (Pearson correlation = 0.564, p = 0.0559).
 
 ![Climatology comparison between EAC CCI and Mean Monthly Strength](output/climatology-comparison_full_50.png)
 
-![Scatterplot of the climatologies](output/Scatterplot%2050%20m%20new.png)
+![Scatterplot of the climatologies](output/Scatter clim model 50m.png)
 
 ### Relationship between Index values and Mean Monthly Strength
 
-The raw values of the two were compared, however there was not a strong correlation between the two (Pearson = 0.136, p = 0.31)
+The raw values of the two were compared, there was statistically significant correlation between the two (Pearson = 0.356, p = 0.006)
 
-![Scatterplot of Index values against Mean Monthly strength values](output/Scatter%20-%20strength%20v%20index.png)
+![Scatterplot of Index values against Mean Monthly strength values](output/Scatter - strength v index new.png)
 
 To further explore the relationship between the output of the Index and the calculated mean monthly strength values, multiple linear regression models were calculated.
 
@@ -44,6 +44,7 @@ raw_data <- readRDS(file.path("var", "raw_data_list.rds"))
 
 raw_strength_data <- raw_data$raw_strength_data
 raw_index_data <- raw_data$raw_index_data
+str_clim <- raw_data$str_clim
 
 # combine raw data values
 
@@ -54,6 +55,10 @@ comb_raw_data <- raw_strength_data %>%
   ) %>% 
   rename(mean_strength = mean_vel) %>% 
   filter(!is.na(mean_strength) & !is.na(eac_cci))
+
+comb_raw_data <- comb_raw_data %>% 
+  inner_join(str_clim, by = "month")
+
 
 head(comb_raw_data)
 
@@ -74,111 +79,70 @@ summary(cci_str_model)
 
 ```
 
-The overall model was not statistically significant, *F(*1, 56) = 0.7069, *p* = 0.404, explaining very little of the variance in the dependent variable (*R²* = 0.0125, adjusted *R²* = -0.0517).
+The overall model was statistically significant, *F(*1, 56) = 8.146, *p* = 0.006, explaining approximately 11% of the variance in the dependent variable (*R²* = 0.127, adjusted *R²* = 0.111).
 
-Residuals were symmetrically distributed with a standard error of 0.1126 (df = 56), ranging from -0.210 to 0.272, suggesting that the model does not under or overfit.
+Residuals were symmetrically distributed with a standard error of 0.1153 (df = 56), ranging from -0.255 to 0.308, suggesting that the model does not under or overfit.
 
 A second regression was conducted to understand the seasonal variation.
 
 ```{r}
-# drop the interaction term
-cci_str_model2 <- lm(eac_cci ~ str_clim, data = comb_raw_data)
+# Index against strength climatology
+cci_str_model2 <- lm(eac_cci ~ month_clim_str, data = comb_raw_data)
+# month_clim_str is the strength climatology value.
 
 summary(cci_str_model2)
 
 ```
 
-This model was also statistically significant, F(11, 104) = 7.973, p \< 0.001, explaining approximately 40% variance in the dependent variable (*R²* = 0.458, adjusted *R²* = 0.4).
+This model was not statistically significant, F(1, 56) = 1.426, p = 0.238, explaining very little variance in the dependent variable (*R²* = 0.025, adjusted *R²* = 0.007).
 
--   The main effect of data source was statistically significant (*β* = 0.1199, *t* = 6.995, *p* \< 0.001).
+Residuals were symmetrically distributed with a standard error of 0.12, ranging from -0.234 to 0.291.
 
-Residuals were symmetrically distributed with a standard error of 0.09233, ranging from -0.181 to 0.188.
+Finally, we calculate the total variation in CCI that is explained by the seasonal and total variation in current. We calculate the non-seasonal component as the difference between the variance explained by the nested models.
 
-To assess whether the interaction between month and the source of data significantly improves the model fit, an analysis of variance (ANOVA) was conducted comparing two nested models:
+```{r}
+# Index against strength climatology
+cci_str_model3 <- lm(eac_cci ~ month_clim_str + mean_strength, data = comb_raw_data)
 
--   **Model 1**: included main effects of `data_source` and `month`, as well as their interaction (`month:data_source`).
+summary(cci_str_model3)
+```
 
--   **Model 2**: included only the main effects of `data_source` and `month`.
+The overall model was statistically significant, *F(*2, 55) = 4.003, *p* = 0.024, explaining approximately 9.5% of the variance in the dependent variable (*R²* = 0.127, adjusted *R²* = 0.095).
+
+Residuals were symmetrically distributed with a standard error of 0.1163 (df = 55), ranging from -0.255 to 0.308, suggesting that the model does not under or overfit.
+
+We test the significance of the non-seasonal component with ANOVA of the nested models.
 
 ```{r}
 # compare the two models 
 
-anova(raw_data_model, raw_data_model2, test = "F")
+anova(cci_str_model2, cci_str_model3, test = "F")
 ```
 
-The comparison revealed that Model 1 provided a significantly better fit to the data than Model 2, *F*(10, 94) = 2.68, *p* = 0.006.
+The comparison revealed that Model 3 provided a better fit to the data than Model 2, *F*(1, 55) = 6.44, *p* = 0.014.
 
-This suggests that the seasonal trends differs between the index and the strength values.
+This suggests that the monthly mean strength value explains more of the variance in the EAC CCI than the strength climatology alone
 
-Diagnostics of Model 1 show that the values have a fairly normal distribution. There is however, an unusual point in the leverage plot.
+Diagnostics of Model 3 show that the values have a fairly normal distribution.
 
 ```{r}
 
 # look at model 1
 
-gglm(raw_data_model)
+gglm(cci_str_model3)
 
 
 ```
 
-A plot showing the model’s predicted values for different months and data sources, overlaid with actual raw data points using jitter to visualize the model's fit to the observed data.
+A plot showing the model’s predicted values for different mean strength values, overlaid with actual raw data points to visualize the model's fit to the observed data.
 
 ```{r}
 
 
-plot_predictions(raw_data_model, condition = c('month', 'data_source')) +
-  geom_jitter(data = comb_raw_data_long,
-             aes(x = month, y = value), width = 0.2, alpha = 0.3)
+plot_predictions(cci_str_model3, condition = "mean_strength") +
+  geom_point(data = comb_raw_data,
+             aes(x = mean_strength, y = eac_cci))
 ```
-
-The two have climatologies that are different,
-
-#### Data transformation
-
-```{r}
-# log transform the data
-
-comb_raw_data_long <- comb_raw_data_long %>%
-  mutate(log1pvalue = ifelse(value >= -1, log1p(value), NA))
-
-head(comb_raw_data_long)
-
-```
-
-Redo the linear regression with the log transformed values
-
-```{r}
-
-# create the model
-
-raw_data_model_log <- lm(log1pvalue ~ data_source * month, data = comb_raw_data_long)
-
-summary(raw_data_model_log)
-
-gglm(raw_data_model_log)
-```
-
-```{r}
-# create the model
-
-raw_data_model_log2 <- lm(log1pvalue ~ data_source + month, data = comb_raw_data_long)
-
-summary(raw_data_model_log2)
-
-# compare the two models 
-
-anova(raw_data_model_log, raw_data_model_log2, test = "F")
-```
-
-The model with the interaction included explains significantly more of the variation in the data.
-
-Using the AIC, the two best models of the log-transformed data and the non-log-transformed data were compared to determine whether the log-transformed data provides a better explanation.
-
-```{r}
-AIC(raw_data_model, raw_data_model_log)
-```
-
-The model without the log transformations has a lower AIC value, suggesting that it is a better fit.
 
 ## Mooring Array
 

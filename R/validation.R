@@ -41,14 +41,40 @@ raw_nc_data <- tnc %>%
 # look at the data before doing any mutates
 raw_nc_data <- raw_nc_data %>% 
   filter(DEPTH < 1000) %>%
-  filter(LONGITUDE > 153.9) %>% 
-  filter(LONGITUDE < 155.0)
+  filter(LONGITUDE < 154.0) 
+
+
+# load bathymetry data to exclude below the 200 isobath
+datafile3 <- "D:/HONOURS/DavinaG_2025_Honours/data/gebco_2025_n-26.0_s-28.0_w152.0_e155.0.nc"
+if (!tolower(Sys.info()[["sysname"]]) == "sunos") {
+  tnc3 <- tidync(datafile3)
+  print(tnc3)
+}
+
+# explore variables
+variables3 <- hyper_vars(tnc3)
+print(variables3)
+
+# extract velocity data
+bathy <- tnc3 %>%
+  hyper_tibble(select_var = "elevation")
+print(bathy)
+
+bathy <- bathy %>% 
+  filter(elevation < -200) %>% 
+  rename(LATITUDE = lat, LONGITUDE = lon)
+
+
+# filter the raw data to remove points below the 200m isobath
+raw_nc_data <- raw_nc_data %>%
+  inner_join(bathy, by = c("LATITUDE", "LONGITUDE")) %>%
+  filter(elevation < -200) %>%
+  select(-elevation)
 
 # filter data to desired depth and longitude range. Create monthly average velocity data
 data_tbl <- data_tbl %>%
   filter(DEPTH < 1000) %>%
-  filter(LONGITUDE > 153.9) %>% 
-  filter(LONGITUDE < 155.0) %>% 
+  filter(LONGITUDE < 154.0) %>% 
   mutate(
     date = as.Date(sub("T.*", "", TIME)),
     year = year(date),

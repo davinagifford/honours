@@ -134,8 +134,8 @@ ggsave(file.path("output", "eac_cci_str_combined.png"),
 
 # anomalies --------------------
 
-index_anomaly_2 <- month_data_t %>% 
-  select(trip_month, eac_cci_clim)
+index_anomaly_2 <- anomaly %>% 
+  select(trip_month, anomaly)
 
 
 strength_anomaly2 <- strength_with_clim_full_50 %>% 
@@ -150,8 +150,8 @@ combined_anomalies2 <- index_anomaly_2 %>%
   full_join(strength_anomaly2, by = "trip_month")
 
 # pearson correlation between the two anomalies
-corr_anom2 <- cor(combined_anomalies2$eac_cci_clim, combined_anomalies2$strength_anom, method = "pearson", use = "complete.obs")
-corr_test_anom2 <- cor.test(combined_anomalies2$eac_cci_clim, combined_anomalies2$strength_anom, method = "pearson", use = "complete.obs")
+corr_anom2 <- cor(combined_anomalies2$anomaly, combined_anomalies2$strength_anom, method = "pearson", use = "complete.obs")
+corr_test_anom2 <- cor.test(combined_anomalies2$anomaly, combined_anomalies2$strength_anom, method = "pearson", use = "complete.obs")
 
 
 # Output results
@@ -163,8 +163,8 @@ p_val_anom2 <- corr_test_anom2$p.value
 
 
 # kendall correlation between the two anomalies
-corr_anom2_k <- cor(combined_anomalies2$eac_cci_clim, combined_anomalies2$strength_anom, method = "kendall", use = "complete.obs")
-corr_test_anom2_k <- cor.test(combined_anomalies2$eac_cci_clim, combined_anomalies2$strength_anom, method = "kendall", use = "complete.obs")
+corr_anom2_k <- cor(combined_anomalies2$anomaly, combined_anomalies2$strength_anom, method = "kendall", use = "complete.obs")
+corr_test_anom2_k <- cor.test(combined_anomalies2$anomaly, combined_anomalies2$strength_anom, method = "kendall", use = "complete.obs")
 
 
 # Output results
@@ -176,10 +176,21 @@ p_val_anom2_k <- corr_test_anom2_k$p.value
 
 
 # plot the two 
+# plot a scatterplot of the two
+
+ggplot(data = combined_anomalies2) +
+  geom_point(mapping = aes(x = anomaly, y = strength_anom)) +
+  geom_smooth(mapping = aes(x = anomaly, y = strength_anom), method = "loess", se = TRUE, color = "blue", linetype = "dashed") +
+  labs(
+    x = "EAC CCI Anomalies ",
+    y = "Current Strength Anomalies ",
+    title = "Scatterplot of Current Strength vs EAC CCI anomalies ",
+    subtitle = paste("Pearson correlation:", round(corr_anom2, 3), "| p-value:", signif(p_val_anom2, 3))
+  ) 
 
 
 
-strength_anom_scale <- max(combined_anomalies2$eac_cci_clim, na.rm = TRUE) /
+strength_anom_scale <- max(combined_anomalies2$anomaly, na.rm = TRUE) /
   max(abs(combined_anomalies2$strength_anom), na.rm = TRUE)
 
 
@@ -187,23 +198,23 @@ combined_anomalies2 <- combined_anomalies2 %>%
   mutate(str_scale = strength_anom * strength_anom_scale,
          trip_month = as.Date(trip_month)) %>%
   filter(
-    !is.na(eac_cci_clim),
+    !is.na(anomaly),
     !is.na(str_scale),
-    is.finite(eac_cci_clim),
+    is.finite(anomaly),
     is.finite(str_scale)
   )
 
 
 p <- ggplot(combined_anomalies2, aes(x = trip_month)) +
-  geom_line(aes(y = eac_cci_clim), colour = "black", linewidth = 1) +
-  geom_point(aes(y = eac_cci_clim), size = 3, shape = 21, fill = "black") +
-  geom_smooth(aes(y = eac_cci_clim), method = "loess", se = TRUE, color = "black", linetype = "dashed") +
+  geom_line(aes(y = anomaly), colour = "black", linewidth = 1) +
+  geom_point(aes(y = anomaly), size = 3, shape = 21, fill = "black") +
+  geom_smooth(aes(y = anomaly), method = "loess", se = TRUE, color = "black", linetype = "dashed") +
   geom_line(aes(y = str_scale), colour = "blue", linewidth = 1) +
   geom_point(aes(y = str_scale), size = 3, shape = 21, fill = "blue") +
   geom_smooth(aes(y = str_scale), method = "loess", se = TRUE, color = "blue", linetype = "dashed") +
   scale_x_date(date_breaks = "1 year", date_labels = "%Y") +
-  scale_y_continuous(name = "EAC copepod composition index",
-                     sec.axis = sec_axis(~ ./ strength_anom_scale,  name = "Monthly mean strength")) +
+  scale_y_continuous(name = "EAC copepod composition index - anomaly",
+                     sec.axis = sec_axis(~ ./ strength_anom_scale,  name = "Monthly mean strength - anomaly")) +
   theme(
     axis.title.y = element_text(size = 14, color = "black"),
     axis.title.y.right = element_text(size = 14, color = "blue"),
@@ -211,7 +222,7 @@ p <- ggplot(combined_anomalies2, aes(x = trip_month)) +
   ) +
   labs(
     x = "Time",
-    title = "EAC copepod composition index & Monthly mean strength ")
+    title = "Anomalies of EAC copepod composition index & Monthly mean strength against climatology")
 
 
 
@@ -219,65 +230,14 @@ ggsave(file.path("output", "eac_cci_str_combined.png"),
        plot = p, width = 1200 / 96, height = 600 / 96, dpi = 96,
        device = png)
 
-# try to get the plotting fixed
-
-
-# Load required package
-library(zoo)
-
-# Ensure data is sorted by date
-combined_anomalies2 <- combined_anomalies2 %>%
-  arrange(trip_month)
-
-# Interpolate missing values for eac_cci_clim and strength_anom
-combined_anomalies2 <- combined_anomalies2 %>%
-  mutate(
-    eac_cci_clim_interp = na.approx(eac_cci_clim, x = trip_month, na.rm = FALSE),
-    strength_anom_interp = na.approx(strength_anom, x = trip_month, na.rm = FALSE)
-  )
-
-strength_anom_scale <- max(combined_anomalies2$eac_cci_clim_interp, na.rm = TRUE) /
-  max(abs(combined_anomalies2$strength_anom_interp), na.rm = TRUE)
-
-combined_anomalies2 <- combined_anomalies2 %>%
-  mutate(
-    str_scale = strength_anom_interp * strength_anom_scale,
-    trip_month = as.Date(trip_month)
-  )
-
-p <- ggplot(combined_anomalies2, aes(x = trip_month)) +
-  geom_line(aes(y = eac_cci_clim_interp), colour = "black", linewidth = 1, na.rm = TRUE) +
-  geom_point(aes(y = eac_cci_clim_interp), size = 3, shape = 21, fill = "black", na.rm = TRUE) +
-  geom_smooth(aes(y = eac_cci_clim_interp), method = "loess", se = TRUE, color = "black", linetype = "dashed", na.rm = TRUE) +
-  geom_line(aes(y = str_scale), colour = "blue", linewidth = 1, na.rm = TRUE) +
-  geom_point(aes(y = str_scale), size = 3, shape = 21, fill = "blue", na.rm = TRUE) +
-  geom_smooth(aes(y = str_scale), method = "loess", se = TRUE, color = "blue", linetype = "dashed", na.rm = TRUE) +
-  scale_x_date(date_breaks = "1 year", date_labels = "%Y") +
-  scale_y_continuous(
-    name = "EAC copepod composition index",
-    sec.axis = sec_axis(~ . / strength_anom_scale, name = "Monthly mean strength")
-  ) +
-  theme(
-    axis.title.y = element_text(size = 14, color = "black"),
-    axis.title.y.right = element_text(size = 14, color = "blue"),
-    plot.title = element_text(size = 18, face = "bold")
-  ) +
-  labs(
-    x = "Time",
-    title = "EAC copepod composition index & Monthly mean strength"
-  )
-
-ggsave(file.path("output", "eac_cci_str_combined_interp.png"),
-       plot = p, width = 1200 / 96, height = 600 / 96, dpi = 96,
-       device = "png")
 
 
 
 # do anova 
 
 anova_data <- combined_anomalies2 %>%
-  select(trip_month, eac_cci_clim, strength_anom) %>%
-  filter(!is.na(eac_cci_clim) & !is.na(strength_anom))
+  select(trip_month, anomaly, strength_anom) %>%
+  filter(!is.na(anomaly) & !is.na(strength_anom))
 anova_data <- anova_data %>%
   mutate(month = month(trip_month, label = TRUE))
 anova_data$month <- as.factor(anova_data$month)
@@ -287,7 +247,7 @@ anova_data <- anova_data %>%
   filter(!is.na(month) & !is.na(year))
 anova_data <- na.omit(anova_data)
 
-anova_result <- aov(eac_cci_clim ~ strength_anom + month + year, data = anova_data)
+anova_result <- aov(anomaly ~ strength_anom + month + year, data = anova_data)
 summary(anova_result)
 
 # Residuals vs Fitted
@@ -307,7 +267,7 @@ qqline(anova_result$residuals, col = "red")
 # Merge the two datasets on trip_month
 combined_anomalies_data <- index_anomaly_2 %>%
   left_join(strength_anomaly2, by = "trip_month") %>% 
-  rename(index_anom = eac_cci_clim)
+  rename(index_anom = anomaly)
 
 # remove nas from combined data
 combined_anomalies_data <- combined_anomalies_data %>%
