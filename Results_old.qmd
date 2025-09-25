@@ -20,15 +20,15 @@ library(gglm)
 
 The climatologies of the Index and the Mean Monthly Strength had a significant correlation between them (Pearson correlation = 0.628, p = 0.0286).
 
-![Climatology comparison between EAC CCI and Mean Monthly Strength](output/climatology-comparison_full_50.png)
+![Climatology comparison between EAC CCI and Mean Monthly Strength](output/climatology-comparison_full_50.png){alt="Climatology comparison between EAC CCI and Mean Monthly Strength"}
 
-![Scatterplot of the climatologies](output/Scatterplot%2050%20m%20new.png)
+![Scatterplot of the climatologies](output/Scatterplot 50 m new.png){alt="Scatterplot of the climatologies"}
 
 ### Relationship between Index values and Mean Monthly Strength
 
 The raw values of the two were compared, however there was not a strong correlation between the two (Pearson = 0.136, p = 0.31)
 
-![Scatterplot of Index values against Mean Monthly strength values](output/Scatter%20-%20strength%20v%20index.png)
+![Scatterplot of Index values against Mean Monthly strength values](output/Scatter - strength v index.png){alt="Scatterplot of Index values against Mean Monthly strength values"}
 
 To further explore the relationship between the output of the Index and the calculated mean monthly strength values, multiple linear regression models were calculated.
 
@@ -48,7 +48,7 @@ raw_index_data <- raw_data$raw_index_data
 # combine raw data values
 
 comb_raw_data <- raw_strength_data %>% 
-  full_join(raw_index_data, by = "date") %>%  
+  full_join(raw_index_data, by = "date") %>%  # inner join to remove NA values
   mutate(
     month = month(date) # extract month value
   ) %>% 
@@ -57,34 +57,51 @@ comb_raw_data <- raw_strength_data %>%
 
 head(comb_raw_data)
 
+# pivot longer for model
 
+comb_raw_data_long <- comb_raw_data %>% 
+  pivot_longer(cols = c(mean_strength, eac_cci),
+               names_to = "data_source",
+               values_to = "value") 
+
+comb_raw_data_long$month <- as.factor(comb_raw_data_long$month)
+
+head(comb_raw_data_long)
 ```
+
+data_source is whether the values come from the output of the EAC CCI Index calculation or are the Mean monthly strength values from the Copernicus Global Ocean Physics Reanalysis <https://data.marine.copernicus.eu/product/GLOBAL_MULTIYEAR_PHY_001_030/description>.
 
 There are no samples taken in January, so the data only covers the period from February to December.
 
-A multiple linear regression was conducted to examine the relationship between the Index values and the mean monthly strength.
+```{r}
+ggplot(data = comb_raw_data_long, aes(x = data_source, y = value)) +
+  geom_jitter(data = comb_raw_data_long,
+             aes(x = data_source, y = value), width = 0.2, alpha = 0.3)
+```
+
+A multiple linear regression was conducted to examine the effects of the data source, month, and their interaction on the resulting values.
 
 ```{r}
 
 # create the model
 
-cci_str_model <- lm(eac_cci ~ mean_strength, data = comb_raw_data)
+raw_data_model <- lm(value ~ data_source * month, data = comb_raw_data_long)
 
-summary(cci_str_model)
+summary(raw_data_model)
 
 ```
 
-The overall model was not statistically significant, *F(*1, 56) = 0.7069, *p* = 0.404, explaining very little of the variance in the dependent variable (*R²* = 0.0125, adjusted *R²* = -0.0517).
+The overall model was statistically significant, *F*(21, 94) = 6.128, *p* \< 0.001, explaining approximately 48.4% of the variance in the dependent variable (*R²* = 0.5779, adjusted *R²* = 0.486).
 
-Residuals were symmetrically distributed with a standard error of 0.1126 (df = 56), ranging from -0.210 to 0.272, suggesting that the model does not under or overfit.
+Residuals were symmetrically distributed with a standard error of 0.08567 (df = 94), ranging from -0.223 to 0.214, suggesting that the model does not under or overfit.
 
-A second regression was conducted to understand the seasonal variation.
+A second regression was conducted to remove the effect of the interaction between data source and month.
 
 ```{r}
 # drop the interaction term
-cci_str_model2 <- lm(eac_cci ~ str_clim, data = comb_raw_data)
+raw_data_model2 <- lm(value ~ data_source + month, data = comb_raw_data_long)
 
-summary(cci_str_model2)
+summary(raw_data_model2)
 
 ```
 
@@ -188,7 +205,7 @@ Anomalies were calculated by subtracting the climatology value from the strength
 
 ![Anomalies of Index and mean monthly strength against climatologies, plotted over time](output/eac_cci_str_combined.png)
 
-![Scatterplot of Index and Mean Monthly Strength anomalies](output/Sactterplot%20of%20anomalies.png)
+![Scatterplot of Index and Mean Monthly Strength anomalies](output/Sactterplot of anomalies.png)
 
 There was no correlation between the two (Pearson correlation = -0.043, p = 0.749).
 
