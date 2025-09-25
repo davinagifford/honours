@@ -61,15 +61,22 @@ bathy <- tnc3 %>%
 print(bathy)
 
 bathy <- bathy %>% 
-  filter(elevation < -200) %>% 
-  rename(LATITUDE = lat, LONGITUDE = lon)
+  rename(LATITUDE = lat, LONGITUDE = lon) %>% 
+  filter(LONGITUDE < 154.0) 
 
 
 # filter the raw data to remove points below the 200m isobath
-raw_nc_data <- raw_nc_data %>%
-  inner_join(bathy, by = c("LATITUDE", "LONGITUDE")) %>%
-  filter(elevation < -200) %>%
-  select(-elevation)
+remove_bathy <- raw_nc_data %>%
+  full_join(bathy, by = "LONGITUDE")
+
+remove_bathy$LONGITUDE <- as.numeric(remove_bathy$LONGITUDE)
+  
+# round longitude to 4 decimal points
+
+remove_bathy <- remove_bathy %>%
+  mutate(LONGITUDE = round(LONGITUDE, 4)) 
+
+  
 
 # filter data to desired depth and longitude range. Create monthly average velocity data
 data_tbl <- data_tbl %>%

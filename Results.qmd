@@ -22,13 +22,13 @@ The climatologies of the Index and the Mean Monthly Strength did not have a sign
 
 ![Climatology comparison between EAC CCI and Mean Monthly Strength](output/climatology-comparison_full_50.png)
 
-![Scatterplot of the climatologies](output/Scatter clim model 50m.png)
+![Scatterplot of the climatologies](output/Scatter%20clim%20model%2050m.png)
 
 ### Relationship between Index values and Mean Monthly Strength
 
 The raw values of the two were compared, there was statistically significant correlation between the two (Pearson = 0.356, p = 0.006)
 
-![Scatterplot of Index values against Mean Monthly strength values](output/Scatter - strength v index new.png)
+![Scatterplot of Index values against Mean Monthly strength values](output/Scatter%20-%20strength%20v%20index%20new.png)
 
 To further explore the relationship between the output of the Index and the calculated mean monthly strength values, multiple linear regression models were calculated.
 
