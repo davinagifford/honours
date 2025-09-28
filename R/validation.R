@@ -43,6 +43,11 @@ raw_nc_data <- raw_nc_data %>%
   filter(DEPTH < 1000) %>%
   filter(LONGITUDE < 154.0) 
 
+raw_nc_data$LATITUDE <- "-27" # add mooring array latitude
+raw_nc_data$LONGITUDE <- as.numeric(raw_nc_data$LONGITUDE)
+raw_nc_data$LATITUDE <- as.numeric(raw_nc_data$LATITUDE)
+
+
 
 # load bathymetry data to exclude below the 200 isobath
 datafile3 <- "D:/HONOURS/DavinaG_2025_Honours/data/gebco_2025_n-26.0_s-28.0_w152.0_e155.0.nc"
@@ -64,24 +69,44 @@ bathy <- bathy %>%
   rename(LATITUDE = lat, LONGITUDE = lon) %>% 
   filter(LONGITUDE < 154.0) 
 
+bathy$LONGITUDE <- as.numeric(bathy$LONGITUDE)
+bathy$LATITUDE <- as.numeric(bathy$LATITUDE)
 
-# filter the raw data to remove points below the 200m isobath
-remove_bathy <- raw_nc_data %>%
-  full_join(bathy, by = "LONGITUDE")
-
-remove_bathy$LONGITUDE <- as.numeric(remove_bathy$LONGITUDE)
-  
 # round longitude to 4 decimal points
 
-remove_bathy <- remove_bathy %>%
-  mutate(LONGITUDE = round(LONGITUDE, 4)) 
+bathy <- bathy %>%
+  mutate(LONGITUDE = round(LONGITUDE, 4),
+         LATITUDE = round(LATITUDE, 0)) 
 
+# filter the raw data to remove points below the 200m isobath
+
+
+# try a thing
+
+
+library(FNN)
+
+# Prepare coordinate matrices
+raw_coords <- raw_nc_data %>% select(LONGITUDE, LATITUDE) %>% as.matrix()
+bathy_coords <- bathy %>% select(LONGITUDE, LATITUDE) %>% as.matrix()
+
+# Find nearest bathy point for each raw_nc_data point
+nn_idx <- get.knnx(bathy_coords, raw_coords, k = 1)$nn.index[,1]
+
+# Add elevation from nearest bathy point
+raw_nc_data$nearest_elevation <- bathy$elevation[nn_idx]
+
+# Filter out points with elevation > -200
+raw_nc_data_filtered <- raw_nc_data %>% filter(nearest_elevation <= -200)
+
+
+raw_nc_data_filtered 
+
+# plot data ------------------------
   
 
-# filter data to desired depth and longitude range. Create monthly average velocity data
-data_tbl <- data_tbl %>%
-  filter(DEPTH < 1000) %>%
-  filter(LONGITUDE < 154.0) %>% 
+#  Create monthly average velocity data
+monthly_vel <- raw_nc_data_filtered %>%
   mutate(
     date = as.Date(sub("T.*", "", TIME)),
     year = year(date),
@@ -92,20 +117,20 @@ data_tbl <- data_tbl %>%
   mutate(date = as.Date(paste(year, month, "01", sep = "-"))) 
 
 # convert velocity to positive strength value
-data_tbl <- data_tbl %>%
+monthly_vel <- monthly_vel %>%
   mutate(mean_vcur = abs(mean_vcur))
 
 
 # plot the data
-p <- ggplot(data_tbl, aes(x = date, y = mean_vcur)) +
+p <- ggplot(monthly_vel, aes(x = date, y = mean_vcur)) +
   geom_line(linewidth = 1, colour = "black") +
   geom_point(size = 3, shape = 21, fill = "black") +
   scale_x_date(date_breaks = "1 year", date_labels = "%Y") +
   geom_smooth(method = "loess", se = TRUE, color = "black", linetype = "dashed") +
   labs(
     x = "Time",
-    y = expression("Monthly Mean strength (m/s"^{-1}*")"),
-    title = "Mean Strength Over Time (100m depth)"
+    y = expression("Monthly Mean Velocity (m/s"^{-1}*")"),
+    title = "Mean Velocity Over Time (100m depth)"
   ) +
   theme(axis.title = element_text(size = 14), 
         plot.title = element_text(size = 18, face = "bold"))
@@ -115,6 +140,8 @@ ggsave(file.path("output", "mean-velocity_100m.png"),
        device = png)
 
 
+
+# Temp comparisons ----------------------
 # extract temperature data
 temp_tbl <- tnc %>%
   hyper_tibble(select_var = "TEMP")
@@ -154,10 +181,11 @@ ggsave(file.path("output", "mean-temp_100m.png"),
        plot = p, width = 1200 / 96, height = 600 / 96, dpi = 96,
        device = png)
 
-# calculate a climatology
+# calculate a climatology -----------------
 
+# filtered climatology
 
-current_data <- data_tbl %>%
+current_data <- monthly_vel %>%
   mutate(
     doy = yday(date)
   )
@@ -188,6 +216,8 @@ climatology_str <-
 
 climatology_str <- climatology_str %>%
   mutate(date = as.POSIXct(date))
+
+
 
 # Strength against climatology --------------------------------------------
 
@@ -252,7 +282,8 @@ p <- ggplot() +
   ) +
   scale_fill_manual(
     breaks = c("Anomaly (+)", "Anomaly (-)"),
-    values = c("Anomaly (+)" = "red", "Anomaly (-)" = "blue")
+    values = c("Anomaly (+)" = "red", "Anomaly (-)" = "blue"),
+    guide = "none"
   ) +
   scale_linetype_manual(
     breaks = c("Anomaly (+)", "Anomaly (-)", "Climatology"),
@@ -262,11 +293,11 @@ p <- ggplot() +
   #coord_cartesian(ylim = c(-0.3, 0.4)) +
   labs(
     x = "Time",
-    y = expression("Monthly Mean strength (m/s"^{-1}*")"),
+    y = expression("Monthly Mean Velocity (m/s"^{-1}*")"),
     colour = NULL,
     fill = NULL,
     linetype = NULL,
-    title = "Current Strength Climatology (monthly average)"
+    title = "Climatology of EAC Velocity  "
   )
 
 ggsave(file.path("output", "strength-with-clim.png"),
@@ -348,8 +379,8 @@ p <- ggplot(clim_compare_long, aes(x = month, y = value, color = climatology_typ
     x = "Month",
     y = "Climatology Value",
     color = "Climatology Type",
-    title = "Comparison of Current Strength and EAC CCI Climatologies",
-    subtitle = paste("Kendall correlation:", round(correlation_k, 3), "| p-value:", signif(p_val_k, 3))
+    title = "Comparison of EAC Velocity and EAC CCI Climatologies",
+    subtitle = paste("Pearons correlation:", round(correlation, 3), "| p-value:", signif(p_val, 3))
   ) +
   theme_minimal() +
   theme(
@@ -359,7 +390,7 @@ p <- ggplot(clim_compare_long, aes(x = month, y = value, color = climatology_typ
   )
 
 
-ggsave(file.path("output", "climatology-comparison_kendall.png"),
+ggsave(file.path("output", "climatology-comparison.png"),
        plot = p, width = 1200 / 96, height = 600 / 96, dpi = 96,
        device = png)
 
@@ -371,33 +402,12 @@ ggplot(data = clim_compare_short) +
   geom_smooth(mapping = aes(x = month_clim, y = month_clim_str), method = "lm", se = TRUE, color = "blue", linetype = "dashed") +
   labs(
     x = "EAC CCI Climatology",
-    y = "Current Strength Climatology",
-    title = "Scatterplot of Current Strength vs EAC CCI Climatologies",
+    y = "EAC Velocity Climatology",
+    title = "Scatterplot of EAC velocity vs EAC CCI Climatologies",
     subtitle = paste("Pearson correlation:", round(correlation, 3), "| p-value:", signif(p_val, 3))
   ) 
 
 
-# correlate the residuals
-
-# Fit a linear model
-str_model <- lm(month_clim ~ month_clim_str, data = clim_compare_short)
-
-# Summary of the model
-summary(str_model)
-
-
-
-residuals_str <- resid(str_model)
-predicted_str <- fitted(str_model)
-
-
-
-plot(clim_compare_short$month_clim_str, str_model$residuals,
-     main = "Residuals vs Fitted Values",
-     xlab = "Fitted Values",
-     ylab = "Residuals",
-     pch = 19, col = "darkgreen")
-abline(h = 0, col = "red", lwd = 2)
 
 
 
@@ -406,7 +416,7 @@ abline(h = 0, col = "red", lwd = 2)
 
 
 
-vel_temp <- data_tbl %>%
+vel_temp <- raw_nc_data_filtered %>%
   left_join(temp_tbl, by = "date") %>%
   select(date, mean_vcur, mean_temp)
 
@@ -533,7 +543,7 @@ summary(lag_model_vt)
 
 with_vel <- anomaly %>%
   mutate(date = as.Date(trip_month)) %>%
-  full_join(data_tbl, by = "date")
+  full_join(monthly_vel, by = "date")
 
 velocity_scale <- max(with_vel$anomaly, na.rm = TRUE) / max(abs(with_vel$mean_vcur), na.rm = TRUE)
 
@@ -550,7 +560,7 @@ p <- ggplot(with_vel, aes(x = date)) +
   scale_x_date(date_breaks = "1 year", date_labels = "%Y") +
   scale_y_continuous(
     name = "EAC copepod composition index - anomaly",
-    sec.axis = sec_axis(~ . / velocity_scale, name = "Monthly mean strength")
+    sec.axis = sec_axis(~ . / velocity_scale, name = "Monthly mean velocity")
   ) +
   theme(
     axis.title.y = element_text(size = 14, color = "black"),
@@ -559,12 +569,15 @@ p <- ggplot(with_vel, aes(x = date)) +
   ) +
   labs(
     x = "Time",
-    title = "EAC copepod composition index & Monthly mean strength"
+    title = "EAC copepod composition index & Monthly mean velocity"
   )
 
 ggsave(file.path("output", "eac_cci_vel_combined.png"),
        plot = p, width = 1200 / 96, height = 600 / 96, dpi = 96,
        device = "png")
+
+
+
 
 
 # test similarity between cci and strength values
@@ -579,61 +592,57 @@ str_combined_data_forcorr <- with_vel %>%
   select(month, observed_eac_cci, mean_vcur) %>%
   drop_na()
 
-correlation_str <- cor(str_combined_data_forcorr$observed_eac_cci, str_combined_data_forcorr$mean_vcur, method = "pearson")
+correlation_str <- cor(str_combined_data_forcorr$observed_eac_cci, str_combined_data_forcorr$mean_vcur, method = "pearson", use = "complete.obs")
 print(paste("Pearson correlation between EAC CCI and strength:", correlation_str)) 
+correlation_str_test <- cor.test(str_combined_data_forcorr$observed_eac_cci, str_combined_data_forcorr$mean_vcur, method = "pearson", use = "complete.obs")
 
-# anova
-
-anova_result_str <- aov(observed_eac_cci ~ mean_vcur, data = str_combined_data_forcorr)
-
-summary(anova_result_str)
-
-# linear regression of EAC CCI against strength
-
-# Fit a linear model
-model_str <- lm(observed_eac_cci ~ mean_vcur, data = with_vel)
-
-# Summary of the model
-summary(model_str)
-
-model_res = resid(model_str)
-
-anova(model_str)
+p_val_str <- correlation_str_test$p.value
 
 
+# plot a scatterplot of the two
 
-ggplot(with_vel, aes(x = mean_vcur, y = observed_eac_cci)) +
-  geom_point(color = "blue") +
-  geom_smooth(method = "lm", se = TRUE, color = "red") +
-  labs(title = "Linear Regression of EAC CCI on Strength",
-       x = expression("Monthly Mean strength (m/s"^{-1}*")"),
-       y = "EAC CCI ") +
-  theme_minimal()
+ggplot(data = with_vel) +
+  geom_point(mapping = aes(x = observed_eac_cci, y = mean_vcur)) +
+  geom_smooth(mapping = aes(x = observed_eac_cci, y = mean_vcur), method = "loess", se = TRUE, color = "blue", linetype = "dashed") +
+  labs(
+    x = "EAC CCI ",
+    y = "Mean Velocity ",
+    title = "Scatterplot of Mean Velocity vs EAC CCI ",
+    subtitle = paste("Pearson correlation:", round(correlation_str, 3), "| p-value:", signif(p_val_str, 3))
+  ) 
+
+# test similarity between North cci and strength values 
+
+with_vel_n <- comb_moor_data_north %>% 
+  mutate(
+    year = year(date),
+    month = month(date)
+  ) 
+
+str_combined_data_forcorr_n <- with_vel_n %>%
+  select(month, cci_north, mean_vel) %>%
+  drop_na()
+
+correlation_str_n <- cor(str_combined_data_forcorr_n$cci_north, str_combined_data_forcorr_n$mean_vel, method = "pearson", use = "complete.obs")
+print(paste("Pearson correlation between EAC CCI and strength:", correlation_str_n)) 
+correlation_str_test_n <- cor.test(str_combined_data_forcorr_n$cci_north, str_combined_data_forcorr_n$mean_vel, method = "pearson", use = "complete.obs")
+
+p_val_str_n <- correlation_str_test$p.value
 
 
-# Plot the regression
-plot(with_vel$mean_vcur, with_vel$observed_eac_cci, main = "Regression of EAC CCI on strength",
-     xlab = "Mean Strength", ylab = "EAC CCI", pch = 19)
-abline(model_str, col = "blue", lwd = 2)
+# plot a scatterplot of the two
+
+ggplot(data = with_vel_n) +
+  geom_point(mapping = aes(x = cci_north, y = mean_vel)) +
+  geom_smooth(mapping = aes(x = cci_north, y = mean_vel), method = "loess", se = TRUE, color = "blue", linetype = "dashed") +
+  labs(
+    x = "EAC CCI - North region",
+    y = "Mean Velocity ",
+    title = "Scatterplot of Mean Velocity vs EAC CCI ",
+    subtitle = paste("Pearson correlation:", round(correlation_str_n, 3), "| p-value:", signif(p_val_str_n, 3))
+  ) 
 
 
-plot(with_vel$observed_eac_cci, model_res,
-     main = "Residuals vs EAC CCI",
-     xlab = "EAC CCI",
-     ylab = "Residuals",
-     pch = 19, col = "darkgreen")
-abline(h = 0, col = "red", lwd = 2)
-
-
-# Save diagnostic plots to a PNG file
-png(filename = "output/eac-str-diagnostic.png", width = 1200, height = 600)
-
-# Set up 2x2 layout and plot diagnostics
-par(mfrow = c(2, 2))
-plot(model_str)
-
-# Close the PNG device
-dev.off()
 
 
 # Remove rows with NA in either column
@@ -1089,3 +1098,24 @@ ggsave(file.path("output", "eac_vs_strength_scatter.png"),
        device = png)
 
 
+
+# data wranging for modelling --------------------
+
+mooring_vel_data <- all_data %>% 
+  select(date, observed_eac_cci, mean_vcur) %>% 
+  rename(eac_cci = observed_eac_cci,
+         mean_vel = mean_vcur) %>% 
+  mutate(date = as.Date(date))
+
+ 
+
+moor_clim <- strength_with_clim %>% 
+  select(date, str_clim, month) %>% 
+  mutate(date = as.Date(date)) %>% 
+  rename(vel_clim = str_clim)
+
+
+mooring_data_list <- list(mooring_vel_data = mooring_vel_data,
+                          moor_clim = moor_clim)
+
+saveRDS(mooring_data_list, file.path("var", "mooring_data_list.rds"))

@@ -52,6 +52,14 @@ raw_model_vel <- raw_model_vel %>%
 # not the full copernicus data
 model_vel$depth <- as.numeric(model_vel$depth)
 
+# filter to region north of 32S
+model_vel_n <- model_vel %>% 
+  filter(latitude <= -32)
+
+# filter to region south of 32S
+model_vel_s <- model_vel %>% 
+  filter(latitude >= -32)
+
 model_vel_50 <- model_vel %>%
   filter(depth < 60) %>% 
   mutate(
@@ -64,9 +72,39 @@ model_vel_50 <- model_vel %>%
   mutate(date = as.Date(paste(year, month, "01", sep = "-"))) 
 
 
-# convert velocity to positive strength value
-model_vel_50 <- model_vel_50 %>%
-  mutate(mean_vel = abs(mean_vel))
+
+
+# make the north data set
+
+model_vel_50_n <- model_vel_n %>%
+  filter(depth < 60) %>% 
+  mutate(
+    date = as.Date(sub("T.*", "", time)),
+    year = year(date),
+    month = month(date)
+  ) %>%
+  group_by(year, month) %>%
+  summarise(mean_vel = mean(vo, na.rm = TRUE), .groups = "drop") %>% 
+  mutate(date = as.Date(paste(year, month, "01", sep = "-"))) 
+
+
+
+# make the south data set
+
+model_vel_50_s <- model_vel_s %>%
+  filter(depth < 60) %>% 
+  mutate(
+    date = as.Date(sub("T.*", "", time)),
+    year = year(date),
+    month = month(date)
+  ) %>%
+  group_by(year, month) %>%
+  summarise(mean_vel = mean(vo, na.rm = TRUE), .groups = "drop") %>% 
+  mutate(date = as.Date(paste(year, month, "01", sep = "-"))) 
+
+
+
+
 
 
 # plot model velocity
@@ -113,6 +151,15 @@ raw_model_vel2 <- raw_model_vel2 %>%
 model_vel$depth <- as.numeric(model_vel$depth)
 model_vel2$depth <- as.numeric(model_vel2$depth)
 
+# filter to region north of 32S
+model_vel2_n <- model_vel2 %>% 
+  filter(latitude <= -32)
+
+# filter to region south of 32S
+model_vel2_s <- model_vel2 %>% 
+  filter(latitude >= -32)
+
+
 
 model_vel2_50 <- model_vel2 %>%
   filter(depth < 60) %>%
@@ -125,13 +172,59 @@ model_vel2_50 <- model_vel2 %>%
   summarise(mean_vel = mean(vo, na.rm = TRUE), .groups = "drop") %>% 
   mutate(date = as.Date(paste(year, month, "01", sep = "-"))) 
 
+#do for north
+model_vel2_50_n <- model_vel2_n %>%
+  filter(depth < 60) %>%
+  mutate(
+    date = as.Date(sub("T.*", "", time)),
+    year = year(date),
+    month = month(date)
+  ) %>%
+  group_by(year, month) %>%
+  summarise(mean_vel = mean(vo, na.rm = TRUE), .groups = "drop") %>% 
+  mutate(date = as.Date(paste(year, month, "01", sep = "-"))) 
+
+#do for south
+model_vel2_50_s <- model_vel2_s %>%
+  filter(depth < 60) %>%
+  mutate(
+    date = as.Date(sub("T.*", "", time)),
+    year = year(date),
+    month = month(date)
+  ) %>%
+  group_by(year, month) %>%
+  summarise(mean_vel = mean(vo, na.rm = TRUE), .groups = "drop") %>% 
+  mutate(date = as.Date(paste(year, month, "01", sep = "-"))) 
+
+
 
 # Combine the two datasets
 
 model_vel_full_50 <- bind_rows(model_vel_50, model_vel2_50)
 
+# Combine the two datasets - north
+
+model_vel_full_50_n <- bind_rows(model_vel_50_n, model_vel2_50_n)
+
+# Combine the two datasets - south
+
+model_vel_full_50_s <- bind_rows(model_vel_50_s, model_vel2_50_s)
+
 # convert velocity to positive strength value
 model_vel_full_50 <- model_vel_full_50 %>%
+  filter(mean_vel <= 0) %>% # remove northward flows
+  filter(year < 2025) %>% 
+  mutate(mean_vel = abs(mean_vel))
+
+
+# convert velocity to positive strength value - north
+model_vel_full_50_n <- model_vel_full_50_n %>%
+  filter(mean_vel <= 0) %>% # remove northward flows
+  filter(year < 2025) %>% 
+  mutate(mean_vel = abs(mean_vel))
+
+# convert velocity to positive strength value - south
+model_vel_full_50_s <- model_vel_full_50_s %>%
   filter(mean_vel <= 0) %>% # remove northward flows
   filter(year < 2025) %>% 
   mutate(mean_vel = abs(mean_vel))
@@ -264,6 +357,85 @@ ggsave(file.path("output", "climatology-comparison_full_50.png"),
        device = png)
 
 
+# climatology for north of separation -------
+
+cop_model_data_full_50_n <- model_vel_full_50_n %>%
+  mutate(
+    doy = yday(date)
+  )
+
+lm_fit_strength_full_50_n <- gam(mean_vel ~ s(doy, bs = "cc", k = 5),
+                               data = cop_model_data_full_50_n,
+                               method = "REML",
+                               knots = list(doy = c(0, 365)))
+
+mean_time_full_50_n <- median(cop_model_data_full_50_n$date)
+time0_full_50_n <- min(cop_model_data_full_50_n$date)
+
+climatology_str_full_50_n <-
+  tibble(date = floor_date(mean_time_full_50_n, unit = "year") + days(0:364),
+         doy = yday(date),
+         time_x = time_length(interval(time0_full_50_n, mean_time_full_50_n), unit = "day"))
+
+clim_terms_str_full_50_n <- predict(lm_fit_strength_full_50_n, type = "terms", newdata = climatology_str_full_50_n)
+
+head(clim_terms_str_full_50_n)
+
+climatology_str_full_50_n <-
+  climatology_str_full_50_n %>%
+  mutate(doy_eff = clim_terms_str_full_50_n[, "s(doy)"],
+         intercept = coef(lm_fit_strength_full_50_n)["(Intercept)"],
+         str_clim = doy_eff + intercept) %>%
+  select(!c(doy_eff, intercept))
+
+climatology_str_full_50_n <- climatology_str_full_50_n %>%
+  mutate(date = as.Date(date))
+
+month_clim_str_full_50_n <- climatology_str_full_50_n %>%
+  mutate(month = month(date)) %>%
+  group_by(month) %>%
+  summarise(month_clim_str = mean(str_clim, na.rm = TRUE), .groups = "drop")
+
+
+
+# climatology for south of separation --------
+
+cop_model_data_full_50_s <- model_vel_full_50_s %>%
+  mutate(
+    doy = yday(date)
+  )
+
+lm_fit_strength_full_50_s <- gam(mean_vel ~ s(doy, bs = "cc", k = 5),
+                                 data = cop_model_data_full_50_s,
+                                 method = "REML",
+                                 knots = list(doy = c(0, 365)))
+
+mean_time_full_50_s <- median(cop_model_data_full_50_s$date)
+time0_full_50_s <- min(cop_model_data_full_50_s$date)
+
+climatology_str_full_50_s <-
+  tibble(date = floor_date(mean_time_full_50_s, unit = "year") + days(0:364),
+         doy = yday(date),
+         time_x = time_length(interval(time0_full_50_s, mean_time_full_50_s), unit = "day"))
+
+clim_terms_str_full_50_s <- predict(lm_fit_strength_full_50_s, type = "terms", newdata = climatology_str_full_50_s)
+
+head(clim_terms_str_full_50_s)
+
+climatology_str_full_50_s <-
+  climatology_str_full_50_s %>%
+  mutate(doy_eff = clim_terms_str_full_50_s[, "s(doy)"],
+         intercept = coef(lm_fit_strength_full_50_s)["(Intercept)"],
+         str_clim = doy_eff + intercept) %>%
+  select(!c(doy_eff, intercept))
+
+climatology_str_full_50_s <- climatology_str_full_50_s %>%
+  mutate(date = as.Date(date))
+
+month_clim_str_full_50_s <- climatology_str_full_50_s %>%
+  mutate(month = month(date)) %>%
+  group_by(month) %>%
+  summarise(month_clim_str = mean(str_clim, na.rm = TRUE), .groups = "drop")
 
 
 
@@ -439,3 +611,24 @@ raw_data_list <- list(raw_strength_data = raw_strength_data,
                       str_clim = raw_climatology_str)
 
 saveRDS(raw_data_list, file.path("var", "raw_data_list.rds"))
+
+
+#north 
+
+raw_strength_data_n <- model_vel_full_50_n %>% 
+  select(date, mean_vel)
+raw_climatology_str_n <- month_clim_str_full_50_n
+
+raw_data_list_n <- list(raw_strength_data_n = raw_strength_data_n,
+                      str_clim_n = raw_climatology_str_n)
+saveRDS(raw_data_list_n, file.path("var", "raw_data_list_n.rds"))
+
+# south
+
+raw_strength_data_s <- model_vel_full_50_s %>% 
+  select(date, mean_vel)
+raw_climatology_str_s <- month_clim_str_full_50_s
+
+raw_data_list_s <- list(raw_strength_data_s = raw_strength_data_s,
+                        str_clim_s = raw_climatology_str_s)
+saveRDS(raw_data_list_s, file.path("var", "raw_data_list_s.rds"))

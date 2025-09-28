@@ -213,3 +213,15 @@ ggsave(file.path("output", "eac_cci_rda_envfit_north_ggplot.png"),
        width = 800 / 96, height = 600 / 96, dpi = 96,
        device = png)
 
+
+
+# data wrangling -------
+
+cci_north <- month_data_t_n %>% 
+  select(trip_month, eac_cci) %>%
+  rename(cci_north = eac_cci,
+         date = trip_month)
+
+cci_north_list <- list(cci_north = cci_north)
+
+saveRDS(cci_north_list, file.path("var", "eac_cci_north_list.rds"))
