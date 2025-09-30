@@ -13,6 +13,7 @@ library(ncdf4)
 library(tidync)
 library(mgcv)
 library(ggplot2)
+library(sf)
 
 
 
@@ -42,25 +43,57 @@ raw_model_vel <- tnc %>%
 
 raw_model_vel <- raw_model_vel %>% 
   filter(depth < 60) 
-  
 
+
+# filter to region north of 32S
+model_vel_n <- raw_model_vel %>% 
+  filter(latitude <= -32)
+
+# filter to region south of 32S
+model_vel_s <- raw_model_vel %>% 
+  filter(latitude >= -32)
+
+# filter based on the shape file similar to the way the CPR data was filtered prior to the index creation
+
+# Read the mask shapefile (same as in read_segments.R)
+mask_lyr <- read_sf(file.path("shape", "eac_mask.shp"), crs = 4326)
+mask_lyr <- mask_lyr %>% select(cat)
+
+# Convert model_vel to sf object
+model_vel_sf <- raw_model_vel %>%
+  st_as_sf(coords = c("longitude", "latitude"), crs = 4326)
+
+
+gc()
+# Spatial join with mask
+model_vel_sf <- model_vel_sf %>%
+  st_join(mask_lyr) %>%
+  filter(!is.na(cat)) %>%   # Keep only points inside the mask
+  st_drop_geometry()      # Drop geometry if you want a regular tibble
+
+# filter the north  data
+model_vel_n_sf <- model_vel_n %>%
+  st_as_sf(coords = c("longitude", "latitude"), crs = 4326) %>%
+  st_join(mask_lyr) %>%
+  filter(!is.na(cat)) %>%   # Keep only points inside the mask
+  st_drop_geometry()        # Drop geometry if you want a regular tibble
+
+# filter the  south data
+model_vel_s_sf <- model_vel_s %>%
+  st_as_sf(coords = c("longitude", "latitude"), crs = 4326) %>%
+  st_join(mask_lyr) %>%
+  filter(!is.na(cat)) %>%   # Keep only points inside the mask
+  st_drop_geometry()        # Drop geometry if you want a regular tibble
 
 
 # 50m depth ---------------------------------------------------------------
 
 
 # not the full copernicus data
-model_vel$depth <- as.numeric(model_vel$depth)
+model_vel_sf$depth <- as.numeric(model_vel_sf$depth)
 
-# filter to region north of 32S
-model_vel_n <- model_vel %>% 
-  filter(latitude <= -32)
 
-# filter to region south of 32S
-model_vel_s <- model_vel %>% 
-  filter(latitude >= -32)
-
-model_vel_50 <- model_vel %>%
+model_vel_50 <- model_vel_sf %>%
   filter(depth < 60) %>% 
   mutate(
     date = as.Date(sub("T.*", "", time)),
@@ -76,7 +109,7 @@ model_vel_50 <- model_vel %>%
 
 # make the north data set
 
-model_vel_50_n <- model_vel_n %>%
+model_vel_50_n <- model_vel_n_sf %>%
   filter(depth < 60) %>% 
   mutate(
     date = as.Date(sub("T.*", "", time)),
@@ -91,7 +124,7 @@ model_vel_50_n <- model_vel_n %>%
 
 # make the south data set
 
-model_vel_50_s <- model_vel_s %>%
+model_vel_50_s <- model_vel_s_sf %>%
   filter(depth < 60) %>% 
   mutate(
     date = as.Date(sub("T.*", "", time)),
@@ -101,28 +134,6 @@ model_vel_50_s <- model_vel_s %>%
   group_by(year, month) %>%
   summarise(mean_vel = mean(vo, na.rm = TRUE), .groups = "drop") %>% 
   mutate(date = as.Date(paste(year, month, "01", sep = "-"))) 
-
-
-
-
-
-
-# plot model velocity
-p <- ggplot(model_vel_50, aes(x = date, y = mean_vel)) +
-  geom_line(colour = "blue", linewidth = 1) +
-  geom_point(size = 3, shape = 21, fill = "blue") +
-  geom_smooth(method = "loess", se = TRUE, color = "blue", linetype = "dashed") +
-  scale_x_date(date_breaks = "1 year", date_labels = "%Y") +
-  labs(
-    x = "Time",
-    y = expression("Monthly Mean model velocity (m/s"^{-1}*")"),
-    title = "Copernicus Model Monthly Mean Velocity (50m depth)"
-  )
-
-ggsave(file.path("output", "model_velocity_50.png"),
-       plot = p, width = 1200 / 96, height = 600 / 96, dpi = 96,
-       device = png)
-
 
 
 # load the interim data
@@ -148,20 +159,51 @@ raw_model_vel2 <- tnc2 %>%
 raw_model_vel2 <- raw_model_vel2 %>% 
   filter(depth < 60) 
 
-model_vel$depth <- as.numeric(model_vel$depth)
-model_vel2$depth <- as.numeric(model_vel2$depth)
-
 # filter to region north of 32S
-model_vel2_n <- model_vel2 %>% 
+model_vel2_n <- raw_model_vel2 %>% 
   filter(latitude <= -32)
 
 # filter to region south of 32S
-model_vel2_s <- model_vel2 %>% 
+model_vel2_s <- raw_model_vel2 %>% 
   filter(latitude >= -32)
 
 
+# Convert model_vel to sf object
+model_vel2_sf <- raw_model_vel2 %>%
+  st_as_sf(coords = c("longitude", "latitude"), crs = 4326)
 
-model_vel2_50 <- model_vel2 %>%
+
+gc()
+# Spatial join with mask
+model_vel2_sf <- model_vel2_sf %>%
+  st_join(mask_lyr) %>%
+  filter(!is.na(cat)) %>%   # Keep only points inside the mask
+  st_drop_geometry()        # Drop geometry if you want a regular tibble
+
+
+# filter the north  data
+model_vel2_n_sf <- model_vel2_n %>%
+  st_as_sf(coords = c("longitude", "latitude"), crs = 4326) %>%
+  st_join(mask_lyr) %>%
+  filter(!is.na(cat)) %>%   # Keep only points inside the mask
+  st_drop_geometry()        # Drop geometry if you want a regular tibble
+
+# filter the  south data
+model_vel2_s_sf <- model_vel2_s %>%
+  st_as_sf(coords = c("longitude", "latitude"), crs = 4326) %>%
+  st_join(mask_lyr) %>%
+  filter(!is.na(cat)) %>%   # Keep only points inside the mask
+  st_drop_geometry()        # Drop geometry if you want a regular tibble
+
+
+model_vel_sf$depth <- as.numeric(model_vel_sf$depth)
+model_vel2_sf$depth <- as.numeric(model_vel2_sf$depth)
+
+
+
+
+
+model_vel2_50 <- model_vel2_sf %>%
   filter(depth < 60) %>%
   mutate(
     date = as.Date(sub("T.*", "", time)),
@@ -173,7 +215,7 @@ model_vel2_50 <- model_vel2 %>%
   mutate(date = as.Date(paste(year, month, "01", sep = "-"))) 
 
 #do for north
-model_vel2_50_n <- model_vel2_n %>%
+model_vel2_50_n <- model_vel2_n_sf %>%
   filter(depth < 60) %>%
   mutate(
     date = as.Date(sub("T.*", "", time)),
@@ -185,7 +227,7 @@ model_vel2_50_n <- model_vel2_n %>%
   mutate(date = as.Date(paste(year, month, "01", sep = "-"))) 
 
 #do for south
-model_vel2_50_s <- model_vel2_s %>%
+model_vel2_50_s <- model_vel2_s_sf %>%
   filter(depth < 60) %>%
   mutate(
     date = as.Date(sub("T.*", "", time)),
@@ -228,6 +270,11 @@ model_vel_full_50_s <- model_vel_full_50_s %>%
   filter(mean_vel <= 0) %>% # remove northward flows
   filter(year < 2025) %>% 
   mutate(mean_vel = abs(mean_vel))
+
+
+
+
+
 
 
 # plot model velocity
@@ -580,6 +627,18 @@ ggsave(file.path("output", "strength-with-clim_full_50.png"),
        device = png)
 
 
+# plot a scatterplot of the two
+
+ggplot(data = clim_compare_short_full_50) +
+  geom_point(mapping = aes(x = month_clim, y = month_clim_str)) +
+  geom_smooth(mapping = aes(x = month_clim, y = month_clim_str), method = "lm", se = TRUE, color = "blue", linetype = "dashed") +
+  labs(
+    x = "EAC CCI Climatology",
+    y = "Current Strength Climatology",
+    title = "Scatterplot of Current Strength vs EAC CCI Climatologies",
+    subtitle = paste("Pearson correlation:", round(correlation_full_50, 3), "| p-value:", signif(p_val_full_50, 3))
+  )
+  
 
 
 

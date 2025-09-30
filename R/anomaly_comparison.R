@@ -65,8 +65,8 @@ ggplot(data = combined_anomalies) +
   geom_smooth(mapping = aes(x = eac_cci, y = eac_strength), method = "loess", se = TRUE, color = "blue", linetype = "dashed") +
   labs(
     x = "EAC CCI ",
-    y = "Current Strength ",
-    title = "Scatterplot of Current Strength vs EAC CCI ",
+    y = "Mean Monthly Velocity (m/s)",
+    title = "Scatterplot of Mean Monthly EAC Velocity vs EAC CCI ",
     subtitle = paste("Pearson correlation:", round(corr_anom, 3), "| p-value:", signif(p_val_anom, 3))
   ) 
 

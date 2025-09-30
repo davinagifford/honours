@@ -374,7 +374,7 @@ p <- ggplot(clim_compare_long, aes(x = month, y = value, color = climatology_typ
   geom_point(size = 3, shape = 21, fill = "white") +
   scale_x_continuous(breaks = 1:12, labels = month.abb) +
   scale_color_manual(values = c("month_clim_str" = "blue", "month_clim" = "red"),
-                     labels = c("EAC CCI Climatology", "Current Strength Climatology")) +
+                     labels = c("EAC CCI Climatology", "EAC Velocity Climatology")) +
   labs(
     x = "Month",
     y = "Climatology Value",
@@ -1082,9 +1082,9 @@ p <- ggplot(scatter_data, aes(x = mean_vcur, y = observed_eac_cci)) +
   geom_point(size = 2, alpha = 0.7) +
   geom_smooth(method = "lm", se = TRUE, color = "blue") +
   labs(
-    x = "Observed Monthly Mean Current Strength (m/s)",
+    x = "Observed Monthly Mean velocity (m/s)",
     y = "EAC Index (CCI)",
-    title = "EAC Index vs Observed Current Strength"
+    title = "EAC Index vs Observed Monthly Mean velocity (m/s)"
   ) +
   annotate("text",
            x = min(scatter_data$mean_vcur, na.rm = TRUE),
