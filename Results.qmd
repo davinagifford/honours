@@ -109,6 +109,11 @@ Finally, we calculate the total variation in CCI that is explained by the season
 cci_str_model3 <- lm(eac_cci ~ month_clim_str + mean_strength, data = comb_raw_data)
 
 summary(cci_str_model3)
+
+
+cci_str_model4 <- lm(mean_strength ~ eac_cci, data = comb_raw_data)
+
+summary(cci_str_model4)
 ```
 
 The overall model was statistically significant, *F(*2, 55) = 9.066, *p* \< 0.001, explaining approximately 22% of the variance in the dependent variable (*R²* = 0.248, adjusted *R²* = 0.221).
@@ -150,6 +155,14 @@ A plot showing the model’s predicted values for different mean strength values
 plot_predictions(cci_str_model3, condition = "mean_strength") +
   geom_point(data = comb_raw_data,
              aes(x = mean_strength, y = eac_cci))
+
+plot_predictions(cci_str_model3, condition = "month_clim_str") +
+  geom_point(data = comb_raw_data,
+             aes(x = month_clim_str, y = eac_cci))
+
+plot_predictions(cci_str_model3, condition = "mean_strength", points= 0.25)
+
+plot_predictions(cci_str_model3, condition = "month_clim_str", points= 0.25)
 ```
 
 ## Mooring Array
@@ -293,7 +306,7 @@ We test the significance of the non-seasonal component with ANOVA of the nested 
 
 ```{r}
 # compare the two models   
-anova(cci_moor_model_n3, cci_moor_model_n2, test = "F")
+anova(cci_moor_model_n2, cci_moor_model_n3, test = "F")
 ```
 
 This comparison shows that adding the mean velocity value to the model does not explain any additional variance beyond what is explained by the climatology.
@@ -456,6 +469,10 @@ A plot showing the model’s predicted values for different mean strength values
 plot_predictions(cci_str_model_n3, condition = "mean_strength") +
   geom_point(data = comb_raw_data_n,
              aes(x = mean_strength, y = eac_cci))
+
+plot_predictions(cci_str_model_n3, condition = "mean_strength", points= 0.25)
+
+plot_predictions(cci_str_model_n3, condition = "month_clim_str", points= 0.25)
 ```
 
 ### South of the separation zone
@@ -489,6 +506,8 @@ Finally, we calculate the total variation in CCI that is explained by the season
 ```{r}
 cci_str_model_s3 <- lm(eac_cci ~ month_clim_str + mean_strength, data = comb_raw_data_s)  
 summary(cci_str_model_s3)
+
+
 ```
 
 This model was statistically significant, *F(*2, 55) = 5.439, *p* = 0.0075, explaining approximately 13% of the variance in the dependent variable (*R²* = 0.163, adjusted *R²* = 0.132).
