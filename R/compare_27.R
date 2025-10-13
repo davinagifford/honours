@@ -19,7 +19,7 @@ library(mgcv)
 # filter copernicus model data to 27 s
 # use model data from validation_cop_model.R
 
-cop_27 <- bind_rows(raw_model_vel2, raw_model_vel)
+cop_27 <- bind_rows(model_vel_full_50, raw_model_vel)
 
 cop_27$depth <- as.numeric(cop_27$depth)
 

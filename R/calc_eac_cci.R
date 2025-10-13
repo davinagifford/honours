@@ -26,6 +26,16 @@ samples <- catch_data$samples
 species <- catch_data$species
 catches <- catch_data$catches
 
+# order catches data by descending order of abundance
+catches_ordered <- catches %>%
+  arrange(desc(abundance)) %>% 
+  left_join(species %>% select(species_id, species_name), by = "species_id") %>% 
+  group_by(species_id, species_name) %>% 
+  summarise(total_abundance = sum(abundance, na.rm = TRUE), .groups = "drop") %>% 
+  arrange(desc(total_abundance))
+
+catches_ordered
+
 catch_mtx <- catches %>%
   mutate(
     pseg_id = factor(pseg_id, levels = samples$pseg_id), # create factors of the sample ID
@@ -40,6 +50,8 @@ catch_mtx <- catches %>%
     id_expand = TRUE, # ensures that all combinations of pseg_id and species_id are included
     names_expand = TRUE, 
   )
+
+
 
 
 # Convert to matrix, excluding the grouping column
@@ -96,6 +108,15 @@ sp_score_df <-
   sp_score %>%
   enframe(name = "species_id", value = "rda_score") %>%
   mutate(species_id = as.integer(species_id))
+
+
+# order species by score highest first
+
+sp_score_df_ordered <- sp_score_df %>%
+  mutate(abs_rda_score = abs(rda_score)) %>%
+  arrange(desc(abs_rda_score)) %>%
+  left_join(species %>% select(species_id, species_name), by = "species_id")
+sp_score_df_ordered
 
 species <- species %>% left_join(sp_score_df, by = "species_id")
 

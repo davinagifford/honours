@@ -117,3 +117,31 @@ plot_predictions(cci_str_model_s3, condition = "month_clim_str", points= 0.25) +
   labs(
     x = "vel_clim"
   )
+
+
+
+
+# how many unique silk ids in the sample data
+
+samples %>% 
+  distinct(silk_id) %>% 
+  summarise(n = n())
+
+# how many unique pseg_id in the sample data
+samples %>% 
+  distinct(pseg_id) %>% 
+  summarise(n = n())
+19
+
+
+# look at abundance of species
+
+top_species <- catches %>%
+  group_by(species_id) %>%
+  summarise(total_abundance = sum(abundance, na.rm = TRUE)) %>%
+  arrange(desc(total_abundance)) %>%
+  mutate(cum_prop = cumsum(total_abundance) / sum(total_abundance)) %>%
+  filter(cum_prop <= 0.89) %>%
+  pull(species_id)
+top_species
+# 78% of total abundance is made up of 15 species

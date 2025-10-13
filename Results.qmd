@@ -32,7 +32,7 @@ The climatologies of the Index and the Mean Monthly Strength showed a significan
 
 The raw values of the two were compared, there was statistically significant correlation between the two (Pearson = 0.497, p \< 0.001).
 
-![Scatterplot of Index values against Mean Monthly Velocity values](output/Scatter - model vel v index.png){.lightbox}
+![Scatterplot of Index values against Mean Monthly Velocity values](output/Scatter%20-%20model%20vel%20v%20index.png){.lightbox}
 
 To further explore the relationship between the output of the Index and the calculated mean monthly strength values, multiple linear regression models were calculated.
 
