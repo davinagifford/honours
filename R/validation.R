@@ -409,7 +409,57 @@ ggplot(data = clim_compare_short) +
 
 
 
+# ...existing code...
+clim_compare_short <- month_clim_str %>%
+  select(month, month_clim_str) %>%
+  left_join(
+    month_climatology,
+    by = "month"
+  )
 
+# load Copernicus comparison saved by validation_cop_model.R
+copernicus_clim_path <- file.path("var", "clim_compare_short_full_50.rds")
+if (file.exists(copernicus_clim_path)) {
+  clim_compare_short_full_50 <- readRDS(copernicus_clim_path)
+} else {
+  stop("Copernicus climatology file not found: ", copernicus_clim_path)
+}
+
+# add a source column and bind rows
+obs_clim <- clim_compare_short %>% mutate(source = "Mooring array")
+cop_clim <- clim_compare_short_full_50 %>% mutate(source = "GLORYS12V1")
+
+combined_short <- bind_rows(obs_clim, cop_clim)
+
+# pivot longer and optionally relabel types
+combined_long <- combined_short %>%
+  pivot_longer(cols = c(month_clim_str, month_clim),
+               names_to = "climatology_type", values_to = "value") %>%
+  mutate(climatology_type = recode(climatology_type,
+                                   month_clim_str = "Velocity Climatology",
+                                   month_clim = "EAC CCI Climatology"))
+
+# combined plot: color by source, linetype by climatology type
+p_combined <- ggplot(combined_long, aes(x = month, y = value,
+                                        color = source,
+                                        linetype = climatology_type,
+                                        group = interaction(source, climatology_type))) +
+  geom_line(linewidth = 1) +
+  geom_point(size = 2, shape = 21, fill = "white") +
+  scale_x_continuous(breaks = 1:12, labels = month.abb) +
+  labs(
+    x = "Month",
+    y = "Climatology value",
+    color = "Data source",
+    linetype = "Climatology type",
+    #title = "Observed vs Modelled: Climatology comparison"
+  ) +
+  theme_minimal()
+
+ggsave(file.path("output", "climatology-comparison-combined.png"),
+       plot = p_combined, width = 1200 / 96, height = 600 / 96, dpi = 96,
+       device = "png")
+# ...existing code...
 
 
 # # is there a relationship between velocity and temperature?  ------------

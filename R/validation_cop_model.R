@@ -377,6 +377,17 @@ print(cor_test_full_50_k)
 
 p_val_full_50_k <- cor_test_full_50_k$p.value
 
+
+clim_compare_short_full_50 <- month_clim_str_full_50 %>%
+  select(month, month_clim_str) %>%
+  left_join(
+    month_climatology,
+    by = "month"
+  )
+
+# save for combining with observed climatology
+saveRDS(clim_compare_short_full_50, file.path("var", "clim_compare_short_full_50.rds"))
+
 # Plot comparison
 p <- ggplot(clim_compare_long_full_50, aes(x = month, y = value, color = climatology_type)) +
   geom_line(linewidth = 1) +

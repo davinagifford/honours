@@ -99,7 +99,15 @@ ggsave(file.path("output", "SAM.png"),
 
 
 # compare CCI values with SOI ---------------------------------------------
-
+ cci_data <- readRDS(file.path("var", "eac_cci.rds"))
+ month_data <- cci_data$month_data %>% mutate(trip_month = as.Date(trip_month))
+ 
+ soi_ts <- soi_data %>% select(Date, SOI)
+ 
+ combined_soi <- month_data %>%
+   mutate(Date = as.Date(trip_month)) %>%
+   inner_join(soi_ts, by = "Date") %>%
+   drop_na(eac_cci, SOI)
  
 
  
@@ -146,6 +154,21 @@ ggsave(file.path("output", "SAM.png"),
  # test similarity between cci and soi values
  
  
+ pearson <- cor.test(combined_soi$eac_cci, combined_soi$SOI, method = "pearson", use = "complete.obs")
+ print(pearson)
+
+
+ lab <- paste0("r=", round(pearson$estimate, 3), " p=", signif(pearson$p.value, 3))
+ p_corr <- ggplot(combined_soi, aes(x = SOI, y = eac_cci)) +
+   geom_point(alpha = 0.7) +
+   geom_smooth(method = "lm", se = TRUE, color = "blue") +
+   annotate("text", x = min(combined_soi$SOI, na.rm=TRUE), y = max(combined_soi$eac_cci, na.rm=TRUE),
+            label = lab, hjust = 0, vjust = 1) +
+   labs(x = "SOI", y = "EAC CCI", title = "CCI vs SOI (monthly)")
+ ggsave(file.path("output", "cci_vs_soi_scatter.png"), plot = p_corr, width = 8, height = 5, dpi = 150)
+ 
+
+ 
 combined_data_forcorr <- combined_data %>%
    select(Date, eac_cci, SOI) %>%
    drop_na()
@@ -155,7 +178,7 @@ print(paste("Pearson correlation between EAC CCI and SOI:", correlation))
 
 # anova
  
-anova_result <- aov(eac_cci ~ SOI, data = combined_data_forcorr)
+anova_result <- aov(eac_cci ~ SOI, data = combined_soi)
 
 summary(anova_result)
 
@@ -165,7 +188,7 @@ summary(anova_result)
 # linear regression of EAC CCI against SOI
 
 # Fit a linear model
-model <- lm(eac_cci ~ SOI, data = combined_data)
+model <- lm(eac_cci ~ SOI, data = combined_soi)
 
 # Summary of the model
 summary(model)
@@ -234,6 +257,15 @@ summary(lag_model)
 
 
 # Compare Index with Nina3.4 ----------------------------------------------
+
+enso_ts <- enso_data %>% select(Date, anom)
+
+combined_enso <- month_data %>%
+  mutate(Date = as.Date(trip_month)) %>%
+  inner_join(enso_ts, by = "Date") %>%
+  drop_na(eac_cci, anom)
+
+
 
 # Join datasets by date
 combined_data_enso <- month_data_t %>%
@@ -365,7 +397,35 @@ summary(lag_model_enso)
 
 
 
+pearson_enso <- cor.test(combined_enso$eac_cci, combined_enso$anom, method = "pearson", use = "complete.obs")
+print(pearson_enso)
+
+
+lab <- paste0("r=", round(pearson_enso$estimate, 3), " p=", signif(pearson_enso$p.value, 3))
+p_corr <- ggplot(combined_enso, aes(x = anom, y = eac_cci)) +
+  geom_point(alpha = 0.7) +
+  geom_smooth(method = "lm", se = TRUE, color = "blue") +
+  annotate("text", x = min(combined_enso$anom, na.rm=TRUE), y = max(combined_enso$eac_cci, na.rm=TRUE),
+           label = lab, hjust = 0, vjust = 1) +
+  labs(x = "NINA3.4", y = "EAC CCI", title = "CCI vs ENSO (monthly)")
+ggsave(file.path("output", "cci_vs_enso_scatter.png"), plot = p_corr, width = 8, height = 5, dpi = 150)
+
+
+
+
 # Compare index with SAM --------------------------------------------------
+cci_data <- readRDS(file.path("var", "eac_cci.rds"))
+month_data <- cci_data$month_data %>% mutate(trip_month = as.Date(trip_month))
+
+sam_ts <- sam_monthly %>% select(Date = full_date, mean_sam) 
+
+combined_sam <- month_data %>%
+  mutate(Date = as.Date(trip_month)) %>%
+  inner_join(sam_ts, by = "Date") %>%
+  drop_na(eac_cci, mean_sam)
+
+
+
 
 # Join datasets by date
 combined_data_sam <- month_data_t %>%
@@ -414,12 +474,12 @@ sam_combined_data_forcorr <- combined_data_sam %>%
   select(full_date, eac_cci, aao_index_cdas) %>%
   drop_na()
 
-correlation_sam <- cor(sam_combined_data_forcorr$eac_cci, sam_combined_data_forcorr$aao_index_cdas, method = "pearson")
+correlation_sam <- cor(combined_sam$eac_cci, combined_sam$mean_sam, method = "pearson")
 print(paste("Pearson correlation between EAC CCI and Southern Annular Mode:", correlation_sam)) 
 
 # anova
 
-anova_result_sam <- aov(eac_cci ~ aao_index_cdas, data = sam_combined_data_forcorr)
+anova_result_sam <- aov(eac_cci ~ mean_sam, data = combined_sam)
 
 summary(anova_result_sam)
 
@@ -429,7 +489,7 @@ summary(anova_result_sam)
 # linear regression of EAC CCI against SAM
 
 # Fit a linear model
-model_sam <- lm(eac_cci ~ aao_index_cdas, data = combined_data_sam)
+model_sam <- lm(eac_cci ~ mean_sam, data = combined_sam)
 
 # Summary of the model
 summary(model_sam)
@@ -497,6 +557,22 @@ if (best_lag < 0) {
 summary(lag_model_sam)
 
 
+
+
+
+
+pearson_sam <- cor.test(combined_sam$eac_cci, combined_sam$mean_sam, method = "pearson", use = "complete.obs")
+print(pearson_sam)
+
+
+lab <- paste0("r=", round(pearson_sam$estimate, 3), " p=", signif(pearson_sam$p.value, 3))
+p_corr <- ggplot(combined_sam, aes(x = mean_sam, y = eac_cci)) +
+  geom_point(alpha = 0.7) +
+  geom_smooth(method = "lm", se = TRUE, color = "blue") +
+  annotate("text", x = min(combined_sam$mean_sam, na.rm=TRUE), y = max(combined_sam$eac_cci, na.rm=TRUE),
+           label = lab, hjust = 0, vjust = 1) +
+  labs(x = "SAM", y = "EAC CCI", title = "CCI vs SAM (monthly)")
+ggsave(file.path("output", "cci_vs_sam_scatter.png"), plot = p_corr, width = 8, height = 5, dpi = 150)
 
 
 # Compare all the things --------------------------------------------------

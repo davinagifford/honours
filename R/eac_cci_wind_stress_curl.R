@@ -122,7 +122,7 @@ ggsave(file.path("output", "mean-wind-stress.png"),
 
  
  # Join datasets by date
- combined_data_curl <- month_data_t %>%
+ combined_data_curl <- month_data %>%
    mutate(month = as.Date(trip_month)) %>%
    inner_join(monthly_curl, by = "month")
  
@@ -156,7 +156,7 @@ ggsave(file.path("output", "mean-wind-stress.png"),
  
 
  
- ggsave(file.path("output", "eac_cci_curl_combined.png"),
+ ggsave(file.path("output", "eac_cci_curl_combined_new.png"),
         plot = p, width = 1200 / 96, height = 600 / 96, dpi = 96,
         device = png)
 
@@ -249,3 +249,16 @@ if (best_lag < 0) {
 # View regression summary
 summary(lag_model_curl)
 
+
+pearson_wc <- cor.test(curl_combined_data_forcorr$eac_cci, curl_combined_data_forcorr$mean_curl, method = "pearson", use = "complete.obs")
+print(pearson_wc)
+
+
+lab <- paste0("r=", round(pearson_wc$estimate, 3), " p=", signif(pearson_wc$p.value, 3))
+p_corr <- ggplot(curl_combined_data_forcorr, aes(x = mean_curl, y = eac_cci)) +
+  geom_point(alpha = 0.7) +
+  geom_smooth(method = "lm", se = TRUE, color = "blue") +
+  annotate("text", x = min(curl_combined_data_forcorr$mean_curl, na.rm=TRUE), y = max(curl_combined_data_forcorr$eac_cci, na.rm=TRUE),
+           label = lab, hjust = 0, vjust = 1) +
+  labs(x = "Wind Stress Curl", y = "EAC CCI", title = "CCI vs Wind stress curl (monthly)")
+ggsave(file.path("output", "cci_vs_curl_scatter.png"), plot = p_corr, width = 8, height = 5, dpi = 150)
