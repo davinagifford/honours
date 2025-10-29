@@ -67,6 +67,40 @@ skim(samples)
 
 
 
+# East coast state capitals only
+capitals_east <- data.frame(
+  city = c("Brisbane", "Sydney", "Canberra", "Melbourne"),
+  lat = c(-27.47, -33.87, -35.28, -37.81),
+  lon = c(153.03, 151.21, 149.13, 144.96)
+)
+
+# Convert to sf object and match CRS
+capitals_sf <- st_as_sf(capitals_east, coords = c("lon", "lat"), crs = 4283)
+capitals_sf <- st_transform(capitals_sf, st_crs(sf_map))
+
+# Map with east coast capitals
+ggplot() +
+  geom_sf(data = sf_map, fill = "white", color = "black", alpha = 0.3) +
+  geom_sf(data = samp_loc_sf, size = 1, color = "darkgreen", alpha = 0.7) +
+  geom_sf(data = capitals_sf, shape = 21, fill = "black", color = "black", size = 2) +
+  geom_sf_text(
+    data = capitals_sf, aes(label = city),
+    size = 3.5, fontface = "bold",
+    nudge_x = -0.3, nudge_y = 0,   # shift text to the right
+    hjust = 1,                    # left-align the text
+    color = "black"
+  ) +
+  coord_sf(xlim = c(141, 155), ylim = c(-26, -39)) +
+  theme_minimal() +
+  labs(x = "Longitude", y = "Latitude") +
+  theme(
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank()
+  )
+
+
+
+
 # Validation data ---------------------------------------------------------
 
 
