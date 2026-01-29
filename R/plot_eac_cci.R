@@ -195,4 +195,38 @@ ggsave(file.path("output", "eac_cci_climatology_check_new.png"),
        device = png)
 
 
+# graphs for thesis
+
+plot_predictions(cci_str_model3, condition = "mean_strength", points= 0.25) + 
+  labs(
+    x = "mean_vel"
+  )
+
+plot_predictions(cci_str_model3, condition = "month_clim_str", points= 0.25) +
+  labs(
+    x = "vel_clim"
+  )
+
+
+plot_predictions(cci_str_model_n3, condition = "mean_strength", points= 0.25) + 
+  labs(
+    x = "mean_vel"
+  )
+
+plot_predictions(cci_str_model_n3, condition = "month_clim_str", points= 0.25)+
+  labs(
+    x = "vel_clim"
+  )
+
+
+plot_predictions(cci_str_model_s3, condition = "mean_strength", points= 0.25) +
+  labs(
+    x = "mean_vel"
+  )
+
+plot_predictions(cci_str_model_s3, condition = "month_clim_str", points= 0.25) +
+  labs(
+    x = "vel_clim"
+  )
+
 

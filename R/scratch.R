@@ -12,6 +12,7 @@ library(terra)
 library(sf)
 library(skimr)
 library(ncdf4)
+library(marginaleffects)
 
 
 
