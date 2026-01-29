@@ -4,7 +4,7 @@
 ###
 ### Created: 2023-07-21
 ### Author: Wayne A. Rochester
-### Last updated: 2025-10-30
+### Last updated: 2025-01-29
 ### Edited by: Davina Gifford
 
 library(lubridate)
@@ -168,50 +168,6 @@ ggsave(file.path("output", "eac_cci_climatology_check_north.png"),
 
 
 
-# make it pretty
-library(vegan)
-library(ggplot2)
-
-# 1. Fit envfit
-fit_env <- envfit(rda_fit, samples_t)
-
-# 2. Extract site scores
-site_scores <- scores(rda_fit, display = "wa", choices = c(1, 2), scaling = "sites")
-site_data <- as.data.frame(site_scores)
-site_data$sst <- samples_t$sst
-
-# 3. Extract and scale vectors
-
-# Extract and scale vectors properly
-vecs <- scores(fit_env, display = "vectors", scaling = "sites")# This returns a matrix
-
-# Convert to data frame and scale by vector length (magnitude)
-vecs_df <- as.data.frame(vecs)
-vecs_df$Variable <- rownames(vecs_df)
-
-# Optionally scale vectors for visibility
-vecs_df$RDA1 <- vecs_df$RDA1 * 0.3
-vecs_df$PC1 <- vecs_df$PC1 * 0.23
-
-
-# 4. Plot with ggplot2
-ggplot(site_data, aes(x = RDA1, y = PC1, color = sst)) +
-  geom_point(size = 3) +
-  scale_color_viridis_c() +
-  geom_segment(data = vecs_df,
-               aes(x = 0, y = 0, xend = RDA1, yend = PC1),
-               arrow = arrow(length = unit(0.25, "cm")),
-               color = "black") +
-  geom_text(data = vecs_df,
-            aes(x = RDA1 * 1.1, y = PC1 * 1.1, label = Variable),
-            color = "black", size = 4) +
-  labs(title = format(terms(rda_fit)),
-       x = "RDA1", y = "PC1") +
-  theme_minimal()
-
-ggsave(file.path("output", "eac_cci_rda_envfit_north_ggplot.png"),
-       width = 800 / 96, height = 600 / 96, dpi = 96,
-       device = png)
 
 
 
