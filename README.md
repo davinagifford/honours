@@ -1,4 +1,4 @@
-# Honours 2025 - A novel biological indicator to estimate variability in a western boundary current
+# Honours 2025 - Using copepod assemblages as a novel biological indicator to estimate variability in a western boundary current
 
 2025 Honours project
 
