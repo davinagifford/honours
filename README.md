@@ -24,31 +24,31 @@ Updated by Davina Gifford
 
 ## Index creation
 
-- read_segments.R
-- read_sst_data.R
-- read_catch_data.R
+- [read_segments.R](R/read_segments.R)
+- [read_sst_data.R](R/read_sst_data.R)
+- [read_catch_data.R](R/read_catch_data.R)
 
-- calc_eac_cci.R
-- cacl_eac_sst.R
+- [calc_eac_cci.R](R/calc_eac_cci.R)
+- [calc_eac_sst.R](R/calc_eac_sst.R)
 
-- plot_segment.R
-- plot_eac_cci.R
-- plot_eac_sst.R
-- plot_sst_sites.R
-- plot_eac_cci_north.R
-- plot_eac_cci_south.R
+- [plot_segment.R](R/plot_segment.R)
+- [plot_eac_cci.R](R/plot_eac_cci.R)
+- [plot_eac_sst.R](R/plot_eac_sst.R)
+- [plot_sst_sites.R](R/plot_sst_sites.R)
+- [plot_eac_cci_north.R](R/plot_eac_cci_north.R)
+- [plot_eac_cci_south.R](R/plot_eac_cci_south.R)
 
-- k_values.r
+- [k_values.r](R/k_values.r)
 
-- validation.R
-- validation_cop_model.R
+- [validation.R](R/validation.R)
+- [validation_cop_model.R](R/validation_cop_model.R)
 
 ## Analysis
 
-- index_analysis.R
-- spatial_analysis.R
-- interannual.R
-- Results.QMD
+- [index_analysis.R](R/index_analysis.R)
+- [spatial_analysis.R](R/spatial_analysis.R)
+- [interannual.R](R/interannual.R)
+- [Results.QMD](R/Results.QMD)
 
-- eac_cci_clim_comparison.R
-- eac_cci_wind_stress_curl.R
+- [eac_cci_clim_comparison.R](R/eac_cci_clim_comparison.R)
+- [eac_cci_wind_stress_curl.R](R/eac_cci_wind_stress_curl.R)
