@@ -4,7 +4,7 @@
 ###
 ### Created: 2023-07-21
 ### Author: Wayne A. Rochester
-### Last updated: 2025-04-28
+### Last updated: 2026-08-23
 ### Edited by: Davina Gifford
 
 library(lubridate)
@@ -55,6 +55,7 @@ clim_points <-
     mutate(doy = pmin(yday(sample_time), 365)) %>%
     left_join(climatology %>% select(doy, eac_sst), by = "doy")
 
+# plot the EAC SST data with climatology and anomalies
 p <-
     ggplot(mapping = aes(sample_time, eac_sst)) +
     geom_segment(data = month_data_t,
@@ -82,13 +83,14 @@ ggsave(file.path("output", "eac_sst.png"),
        plot = p, width = 800 / 96, height = 600 / 96, dpi = 96,
        device = png)
 
+# plot gam terms
 
 png(file.path("output", "eac_sst_climatology_gam_terms.png"),
     width = 680, height = 680, res = 96)
 plot(lm_fit, pages = 1)
 invisible(dev.off())
 
-
+# plot climatology
 p <-
     ggplot(climatology, aes(sample_time, eac_sst)) +
     geom_line() +
@@ -98,6 +100,7 @@ ggsave(file.path("output", "eac_sst_climatology.png"),
        plot = p, width = 800 / 96, height = 600 / 96, dpi = 96,
        device = png)
 
+# check the climatology to ensure it is logical
 
 moy_data <-
     month_data %>%

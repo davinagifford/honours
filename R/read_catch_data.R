@@ -1,9 +1,11 @@
 ### read_catch_data.R
 ###
-### Reads the catch data.
+### Reads the data, and retrieves species and number of samples.
 ###
 ### Created: 2023-07-19
 ### Author: Wayne A. Rochester
+### Last Updated: 2026-08-23
+### Edited by: Davina Gifford
 
 library(lubridate)
 library(tidyverse)

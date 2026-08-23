@@ -4,7 +4,7 @@
 ###
 ### Created: 2025-08-19
 ### Author: Davina Gifford
-### Last updated: 2025-10-30
+### Last updated: 2026-08-23
 ### Edited by: Davina Gifford
 
 
@@ -409,7 +409,7 @@ ggplot(data = clim_compare_short) +
 
 
 
-# ...existing code...
+
 clim_compare_short <- month_clim_str %>%
   select(month, month_clim_str) %>%
   left_join(
@@ -459,18 +459,18 @@ p_combined <- ggplot(combined_long, aes(x = month, y = value,
 ggsave(file.path("output", "climatology-comparison-combined.png"),
        plot = p_combined, width = 1200 / 96, height = 600 / 96, dpi = 96,
        device = "png")
-# ...existing code...
+
 
 
 # # is there a relationship between velocity and temperature?  ------------
 
 
 
-vel_temp <- raw_nc_data_filtered %>%
+vel_temp <- monthly_vel %>%
   left_join(temp_tbl, by = "date") %>%
   select(date, mean_vcur, mean_temp)
 
-# Rescale for plotting (adjust factor as needed)
+# Rescale for plotting 
 temp_scale_factor <- max(vel_temp$mean_vcur, na.rm = TRUE) / max(abs(vel_temp$mean_temp), na.rm = TRUE)
 vel_temp <- vel_temp %>%
   mutate(temp_scaled = mean_temp * temp_scale_factor)

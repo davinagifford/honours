@@ -4,7 +4,7 @@
 ###
 ### Created: 2023-07-21
 ### Author: Wayne A. Rochester
-### Last updated: 2026-01-29
+### Last updated: 2026-08-23
 ### Edited by: Davina Gifford
 
 library(lubridate)
@@ -17,6 +17,7 @@ library(tibble)
 library(scales)     # for colour scales
 library(ggrepel)    # for readable labels
 library(ggvegan)
+library(marginaleffects)
 
 install.packages("remotes")
 remotes::install_github("gavinsimpson/ggvegan")
@@ -43,6 +44,7 @@ lm_fit <- cci_data$lm_fit
 climatology <- cci_data$climatology
 month_data <- cci_data$month_data
 
+# create monthly data for plotting
 
 month_data_t <-
     month_data %>%
@@ -119,6 +121,7 @@ ggsave(file.path("output", "eac_cci.png"),
        plot = p, width = 1200 / 96, height = 600 / 96, dpi = 96,
        device = png)
 
+# plot the RDA env fit
 
 samples_t <-
     samples %>%
@@ -133,12 +136,14 @@ plot(envfit(rda_fit, samples_t))
 
 invisible(dev.off())
 
+# plot the gam terms
 
 png(file.path("output", "eac_cci_climatology_gam_terms_new.png"),
     width = 680, height = 680, res = 96)
 plot(lm_fit, pages = 1)
 invisible(dev.off())
 
+# plot the climatology
 
 p <-
     ggplot(climatology, aes(sample_time, eac_cci)) +

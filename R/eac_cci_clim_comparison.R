@@ -111,11 +111,6 @@ ggsave(file.path("output", "SAM.png"),
  
 
  
- # Join datasets by date
- combined_data <- month_data_t %>%
-   mutate(Date = as.Date(trip_month)) %>%
-   inner_join(soi_data, by = "Date")
- 
  # Rescale SOI for plotting (adjust factor as needed)
  soi_scale_factor <- max(combined_data$eac_cci, na.rm = TRUE) / max(abs(combined_data$SOI), na.rm = TRUE)
  combined_data <- combined_data %>%
@@ -266,11 +261,6 @@ combined_enso <- month_data %>%
   drop_na(eac_cci, anom)
 
 
-
-# Join datasets by date
-combined_data_enso <- month_data_t %>%
-  mutate(Date = as.Date(trip_month)) %>%
-  inner_join(enso_data, by = "Date")
 
 # Rescale for plotting (adjust factor as needed)
 enso_scale_factor <- max(combined_data_enso$eac_cci, na.rm = TRUE) / max(abs(combined_data_enso$anom), na.rm = TRUE)
@@ -426,13 +416,7 @@ combined_sam <- month_data %>%
 
 
 
-
-# Join datasets by date
-combined_data_sam <- month_data_t %>%
-  mutate(full_date = as.Date(trip_month)) %>%
-  inner_join(sam_data, by = "full_date")
-
-# Rescale for plotting (adjust factor as needed)
+# Rescale for plotting 
 sam_scale_factor <- max(combined_data_sam$eac_cci, na.rm = TRUE) / max(abs(combined_data_sam$aao_index_cdas), na.rm = TRUE)
 combined_data_sam <- combined_data_sam %>%
   mutate(sam_scaled = aao_index_cdas * sam_scale_factor)
@@ -581,10 +565,10 @@ combined_all <- combined_data %>%
   select(Date, eac_cci, SOI) %>%
   rename(full_date = Date) %>%
   inner_join(enso_data %>% select(Date, anom) %>% rename(full_date = Date), by = "full_date") %>%
-  inner_join(sam_data %>% select(full_date, aao_index_cdas), by = "full_date") 
+  inner_join(sam_monthly %>% select(full_date, mean_sam), by = "full_date") 
 
 
-full_model <- lm(eac_cci ~ SOI * anom * aao_index_cdas, data = combined_all)
+full_model <- lm(eac_cci ~ SOI * anom * mean_sam, data = combined_all)
 summary(full_model)
 
 qqnorm(full_model$residuals) 
@@ -605,7 +589,7 @@ anova(soi_anom)
 
 combined_all <- combined_all %>%
   inner_join(combined_data_curl %>% select(trip_month, mean_curl) %>% rename(full_date = trip_month), by = "full_date")
-full_model2 <- lm(eac_cci ~ SOI * anom * aao_index_cdas * mean_curl, data = combined_all)
+full_model2 <- lm(eac_cci ~ SOI * anom * mean_sam * mean_curl, data = combined_all)
 summary(full_model2)
 step_model2 <- step(full_model2, direction = "both")
 summary(step_model2)
